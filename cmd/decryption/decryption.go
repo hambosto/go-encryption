@@ -8,9 +8,9 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/hambosto/go-encryption/internal/decryptor"
+	"github.com/hambosto/go-encryption/internal/header"
+	"github.com/hambosto/go-encryption/internal/kdf"
 	"github.com/hambosto/go-encryption/internal/utils"
-	"github.com/hambosto/go-encryption/pkg/crypto/header"
-	"github.com/hambosto/go-encryption/pkg/crypto/kdf"
 )
 
 func RunDecryption(inputFile string) error {

@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/hambosto/go-encryption/pkg/crypto/config"
+	"github.com/hambosto/go-encryption/internal/config"
 	"github.com/vivint/infectious"
 )
 

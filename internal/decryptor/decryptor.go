@@ -9,9 +9,9 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/hambosto/go-encryption/pkg/crypto/algorithms"
-	"github.com/hambosto/go-encryption/pkg/crypto/config"
-	"github.com/hambosto/go-encryption/pkg/crypto/encoding"
+	"github.com/hambosto/go-encryption/internal/algorithms"
+	"github.com/hambosto/go-encryption/internal/config"
+	"github.com/hambosto/go-encryption/internal/encoding"
 	"github.com/schollz/progressbar/v3"
 )
 

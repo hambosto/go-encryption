@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/hambosto/go-encryption/pkg/crypto/config"
+	"github.com/hambosto/go-encryption/internal/config"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 

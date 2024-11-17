@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/aead/serpent"
-	"github.com/hambosto/go-encryption/pkg/crypto/config"
+	"github.com/hambosto/go-encryption/internal/config"
 )
 
 type SerpentCipher struct {

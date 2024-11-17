@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hambosto/go-encryption/pkg/crypto/config"
+	"github.com/hambosto/go-encryption/internal/config"
 )
 
 type FileHeader struct {
