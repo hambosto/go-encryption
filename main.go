@@ -11,7 +11,6 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/hambosto/go-encryption/cmd/decryption"
 	"github.com/hambosto/go-encryption/cmd/encryption"
-	"github.com/mbndr/figlet4go"
 )
 
 const (
@@ -38,24 +37,6 @@ func clearTerminal() error {
 	}
 	cmd.Stdout = os.Stdout
 	return cmd.Run()
-}
-
-func displayBanner() error {
-	ascii := figlet4go.NewAsciiRender()
-	options := figlet4go.NewRenderOptions()
-	options.FontColor = []figlet4go.Color{
-		figlet4go.ColorGreen,
-		figlet4go.ColorYellow,
-		figlet4go.ColorCyan,
-		figlet4go.ColorBlue,
-		figlet4go.ColorRed,
-	}
-	banner, err := ascii.RenderOpts(appName, options)
-	if err != nil {
-		return fmt.Errorf("failed to render banner: %w", err)
-	}
-	fmt.Println(banner)
-	return nil
 }
 
 func getOperation() (Operation, error) {
@@ -140,11 +121,6 @@ func processFile(operation Operation, filename string) error {
 func main() {
 	if err := clearTerminal(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to clear terminal: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := displayBanner(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to display banner: %v\n", err)
 		os.Exit(1)
 	}
 
