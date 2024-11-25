@@ -70,7 +70,7 @@ func RunDecryption(inputFile string) error {
 	}
 
 	outputDir := filepath.Dir(outputFile)
-	if err = os.MkdirAll(outputDir, 0755); err != nil {
+	if err = os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -91,7 +91,7 @@ func RunDecryption(inputFile string) error {
 	}
 
 	fmt.Printf("Decrypting %s...\n", inputFile)
-	if err := decrypt.Decrypt(input, output, int64(fileHeader.OriginalSize)); err != nil {
+	if err = decrypt.Decrypt(input, output, int64(fileHeader.OriginalSize)); err != nil {
 		output.Close()
 		os.Remove(outputFile)
 		return fmt.Errorf("failed to decrypt file: %w", err)
