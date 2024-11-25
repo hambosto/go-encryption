@@ -112,7 +112,7 @@ func RunEncryption(inputFile string) error {
 	}
 
 	fmt.Printf("Encrypting %s...\n", inputFile)
-	if err := encrypt.Encrypt(input, output, fileInfo.Size()); err != nil {
+	if err = encrypt.Encrypt(input, output, fileInfo.Size()); err != nil {
 		output.Close()
 		os.Remove(outputFile)
 		return fmt.Errorf("failed to encrypt file: %w", err)
