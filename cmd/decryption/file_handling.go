@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hambosto/go-encryption/internal/utils"
+	"github.com/hambosto/go-encryption/internal/wipe"
 )
 
 func prepareOutputFile(outputFile string) (*os.File, error) {
@@ -27,7 +27,7 @@ func deleteEncryptedFile(inputFile string, deleteType string) error {
 	case "Normal delete (faster, but recoverable)":
 		return os.Remove(inputFile)
 	case "Secure delete (slower, but unrecoverable)":
-		return utils.SecureDelete(inputFile)
+		return wipe.WipeFile(inputFile)
 	default:
 		return fmt.Errorf("invalid delete type")
 	}
