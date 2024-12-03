@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/hambosto/go-encryption/internal/algorithms"
-	"github.com/hambosto/go-encryption/internal/config"
+	"github.com/hambosto/go-encryption/internal/constants"
 	"github.com/hambosto/go-encryption/internal/encoding"
 	"github.com/schollz/progressbar/v3"
 )
@@ -25,7 +25,7 @@ type ChunkResult struct {
 type ChunkProcessor struct {
 	serpentCipher  *algorithms.SerpentCipher
 	chaCha20Cipher *algorithms.ChaCha20Cipher
-	rsDecoder      *encoding.ReedSolomon
+	rsDecoder      *encoding.ReedSolomonEncoder
 	bufferPool     sync.Pool
 	decompressPool sync.Pool
 }
@@ -38,7 +38,7 @@ type FileDecryptor struct {
 
 func NewFileDecryptor(key []byte) (*FileDecryptor, error) {
 	if len(key) < 64 {
-		return nil, fmt.Errorf("invalid key size: must be %d bytes", config.KeySize)
+		return nil, fmt.Errorf("invalid key size: must be %d bytes", constants.KeySize)
 	}
 
 	chunkProcessor, err := NewChunkProcessor(key)
@@ -63,7 +63,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 		return nil, fmt.Errorf("failed to create chacha20 cipher: %w", err)
 	}
 
-	rsDecoder, err := encoding.NewReedSolomon(config.DataShards, config.ParityShards)
+	rsDecoder, err := encoding.NewReedSolomonEncoder(constants.DataShards, constants.ParityShards)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create reed solomon decoder: %w", err)
 	}
@@ -74,7 +74,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 		rsDecoder:      rsDecoder,
 		bufferPool: sync.Pool{
 			New: func() interface{} {
-				buffer := make([]byte, config.MaxEncryptedChunkSize)
+				buffer := make([]byte, constants.MaxEncryptedChunkSize)
 				return &buffer
 			},
 		},
@@ -181,14 +181,14 @@ func (f *FileDecryptor) Decrypt(r io.Reader, w io.Writer, size int64) error {
 
 		chunkSize := binary.BigEndian.Uint32(sizeBuffer)
 
-		if chunkSize == 0 || chunkSize > config.MaxEncryptedChunkSize {
+		if chunkSize == 0 || chunkSize > constants.MaxEncryptedChunkSize {
 			close(jobs)
-			return fmt.Errorf("invalid chunk size: must be between 0 and %d", config.MaxEncryptedChunkSize)
+			return fmt.Errorf("invalid chunk size: must be between 0 and %d", constants.MaxEncryptedChunkSize)
 		}
 
-		if chunkSize%(config.DataShards+config.ParityShards) != 0 {
+		if chunkSize%(constants.DataShards+constants.ParityShards) != 0 {
 			close(jobs)
-			return fmt.Errorf("invalid chunk size: must be a multiple of %d", config.DataShards+config.ParityShards)
+			return fmt.Errorf("invalid chunk size: must be a multiple of %d", constants.DataShards+constants.ParityShards)
 		}
 
 		chunk := make([]byte, chunkSize)
@@ -245,7 +245,8 @@ func (f *FileDecryptor) writeChunk(w io.Writer, chunk []byte) error {
 func (f *FileDecryptor) decryptWorker(jobs <-chan struct {
 	data  []byte
 	index uint32
-}, results chan<- ChunkResult, wg *sync.WaitGroup) {
+}, results chan<- ChunkResult, wg *sync.WaitGroup,
+) {
 	defer wg.Done()
 
 	for job := range jobs {

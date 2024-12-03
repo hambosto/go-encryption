@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hambosto/go-encryption/internal/config"
+	"github.com/hambosto/go-encryption/internal/constants"
 )
 
 type FileHeader struct {
@@ -40,9 +40,9 @@ func Write(w io.Writer, header FileHeader) error {
 
 func Read(r io.Reader) (FileHeader, error) {
 	header := FileHeader{
-		Salt:          make([]byte, config.SaltSize),
-		SerpentNonce:  make([]byte, config.NonceSize),
-		ChaCha20Nonce: make([]byte, config.NonceSizeX),
+		Salt:          make([]byte, constants.SaltSize),
+		SerpentNonce:  make([]byte, constants.NonceSize),
+		ChaCha20Nonce: make([]byte, constants.NonceSizeX),
 	}
 
 	if _, err := io.ReadFull(r, header.Salt); err != nil {

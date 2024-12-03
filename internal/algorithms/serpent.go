@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/aead/serpent"
-	"github.com/hambosto/go-encryption/internal/config"
+	"github.com/hambosto/go-encryption/internal/constants"
 )
 
 type SerpentCipher struct {
@@ -15,7 +15,7 @@ type SerpentCipher struct {
 }
 
 func NewSerpentCipher(key []byte) (*SerpentCipher, error) {
-	nonce := make([]byte, config.NonceSize)
+	nonce := make([]byte, constants.NonceSize)
 	if _, err := rand.Read(nonce); err != nil {
 		return nil, fmt.Errorf("failed to generate nonce: %v", err)
 	}
@@ -55,7 +55,7 @@ func (c *SerpentCipher) Decrypt(ciphertext []byte) ([]byte, error) {
 }
 
 func (c *SerpentCipher) SetNonce(nonce []byte) error {
-	if len(nonce) != config.NonceSize {
+	if len(nonce) != constants.NonceSize {
 		return fmt.Errorf("invalid nonce size: %d bytes", len(nonce))
 	}
 

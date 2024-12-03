@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/hambosto/go-encryption/internal/algorithms"
-	"github.com/hambosto/go-encryption/internal/config"
+	"github.com/hambosto/go-encryption/internal/constants"
 	"github.com/hambosto/go-encryption/internal/encoding"
 	"github.com/schollz/progressbar/v3"
 )
@@ -25,7 +25,7 @@ type ChunkResult struct {
 type ChunkProcessor struct {
 	serpentCipher  *algorithms.SerpentCipher
 	chaCha20Cipher *algorithms.ChaCha20Cipher
-	rsEncoder      *encoding.ReedSolomon
+	rsEncoder      *encoding.ReedSolomonEncoder
 	bufferPool     sync.Pool
 	compressPool   sync.Pool
 }
@@ -37,8 +37,8 @@ type FileEncryptor struct {
 }
 
 func NewFileEncryptor(key []byte) (*FileEncryptor, error) {
-	if len(key) != config.KeySize {
-		return nil, fmt.Errorf("invalid key size: must be %d bytes", config.KeySize)
+	if len(key) != constants.KeySize {
+		return nil, fmt.Errorf("invalid key size: must be %d bytes", constants.KeySize)
 	}
 
 	chunkProcessor, err := NewChunkProcessor(key)
@@ -63,7 +63,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 		return nil, fmt.Errorf("failed to create chacha20 cipher: %w", err)
 	}
 
-	rsEncoder, err := encoding.NewReedSolomon(config.DataShards, config.ParityShards)
+	rsEncoder, err := encoding.NewReedSolomonEncoder(constants.DataShards, constants.ParityShards)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create reed-solomon encoder: %w", err)
 	}
@@ -74,7 +74,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 		rsEncoder:      rsEncoder,
 		bufferPool: sync.Pool{
 			New: func() interface{} {
-				buffer := make([]byte, config.MaxChunkSize)
+				buffer := make([]byte, constants.MaxChunkSize)
 				return &buffer
 			},
 		},
@@ -244,7 +244,8 @@ func (f *FileEncryptor) writeChunk(w io.Writer, chunk []byte) error {
 func (f *FileEncryptor) encryptWorker(jobs <-chan struct {
 	chunk []byte
 	index uint32
-}, results chan<- ChunkResult, wg *sync.WaitGroup) {
+}, results chan<- ChunkResult, wg *sync.WaitGroup,
+) {
 	defer wg.Done()
 
 	for job := range jobs {
