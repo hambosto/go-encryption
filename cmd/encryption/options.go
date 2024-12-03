@@ -37,7 +37,6 @@ func promptPassword() (string, error) {
 		return "", fmt.Errorf("failed to ask for password confirmation: %w", err)
 	}
 
-	// Validate passwords match
 	if !bytes.Equal([]byte(password), []byte(confirmPassword)) {
 		return "", fmt.Errorf("passwords do not match")
 	}
