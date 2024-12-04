@@ -1,4 +1,4 @@
-package encryption
+package utils
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 )
 
-func promptOverwrite(outputFile string) (bool, error) {
+func PromptOverwrite(outputFile string) (bool, error) {
 	overwrite := false
 	prompt := &survey.Confirm{
 		Message: fmt.Sprintf("Output file %s already exists. Overwrite?", outputFile),
@@ -17,7 +17,7 @@ func promptOverwrite(outputFile string) (bool, error) {
 	return overwrite, err
 }
 
-func promptPassword() (string, error) {
+func PromptPassword() (string, error) {
 	password := ""
 	confirmPassword := ""
 
@@ -44,7 +44,7 @@ func promptPassword() (string, error) {
 	return password, nil
 }
 
-func promptDeleteOriginal(inputFile string) (bool, string, error) {
+func PromptDeleteOriginal(inputFile string) (bool, string, error) {
 	deleteOriginal := false
 	prompt := &survey.Confirm{
 		Message: fmt.Sprintf("Delete original file %s?", inputFile),
@@ -70,4 +70,32 @@ func promptDeleteOriginal(inputFile string) (bool, string, error) {
 	}
 	err = survey.AskOne(deletePrompt, &deleteType)
 	return deleteOriginal, deleteType, err
+}
+
+func PromptDeleteEncrypted(inputFile string) (bool, string, error) {
+	deleteEncrypted := false
+	prompt := &survey.Confirm{
+		Message: fmt.Sprintf("Delete encrypted file %s?", inputFile),
+		Default: false,
+	}
+	err := survey.AskOne(prompt, &deleteEncrypted)
+	if err != nil {
+		return false, "", err
+	}
+
+	if !deleteEncrypted {
+		return false, "", nil
+	}
+
+	deleteType := ""
+	deletePrompt := &survey.Select{
+		Message: "Select delete type:",
+		Options: []string{
+			"Normal delete (faster, but recoverable)",
+			"Secure delete (slower, but unrecoverable)",
+		},
+		Default: "Normal delete (faster, but recoverable)",
+	}
+	err = survey.AskOne(deletePrompt, &deleteType)
+	return deleteEncrypted, deleteType, err
 }

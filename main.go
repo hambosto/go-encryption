@@ -10,8 +10,7 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/hambosto/go-encryption/cmd/decryption"
-	"github.com/hambosto/go-encryption/cmd/encryption"
+	"github.com/hambosto/go-encryption/cmd"
 )
 
 const (
@@ -91,9 +90,9 @@ func promptFileSelection(files []string) (string, error) {
 func handleFileOperation(operation Operation, file string) error {
 	switch operation {
 	case Encrypt:
-		return encryption.RunEncryption(file)
+		return cmd.RunEncryption(file)
 	case Decrypt:
-		return decryption.RunDecryption(file)
+		return cmd.RunDecryption(file)
 	default:
 		return errors.New("invalid operation")
 	}

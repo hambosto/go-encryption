@@ -3,7 +3,7 @@ package encoding
 import (
 	"fmt"
 
-	config "github.com/hambosto/go-encryption/internal/constants"
+	"github.com/hambosto/go-encryption/internal/constants"
 	"github.com/vivint/infectious"
 )
 
@@ -19,14 +19,14 @@ func NewReedSolomonEncoder(dataShards, parityShards int) (*ReedSolomonEncoder, e
 	}
 
 	totalShards := dataShards + parityShards
-	fec, err := infectious.NewFEC(config.DataShards, totalShards)
+	fec, err := infectious.NewFEC(constants.DataShards, totalShards)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize FEC: %w", err)
 	}
 
 	return &ReedSolomonEncoder{
 		fec:         fec,
-		dataShards:  config.DataShards,
+		dataShards:  constants.DataShards,
 		totalShards: totalShards,
 	}, nil
 }
