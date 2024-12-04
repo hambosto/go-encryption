@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/hambosto/go-encryption/internal/algorithms"
-	"github.com/hambosto/go-encryption/internal/constants"
+	"github.com/hambosto/go-encryption/internal/config"
 	"github.com/hambosto/go-encryption/internal/encoding"
 )
 
@@ -21,19 +21,23 @@ type ChunkProcessor struct {
 }
 
 func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
+	if len(key) < 64 {
+		return nil, fmt.Errorf("encryption key must be at least 64 bytes long")
+	}
+
 	serpentCipher, err := algorithms.NewSerpentCipher(key[:32])
 	if err != nil {
-		return nil, fmt.Errorf("failed to create serpent cipher: %w", err)
+		return nil, fmt.Errorf("failed to create Serpent cipher: %w", err)
 	}
 
-	chaCha20Cipher, err := algorithms.NewChaCha20Cipher(key[32:])
+	chaCha20Cipher, err := algorithms.NewChaCha20Cipher(key[32:64])
 	if err != nil {
-		return nil, fmt.Errorf("failed to create chacha20 cipher: %w", err)
+		return nil, fmt.Errorf("failed to create ChaCha20 cipher: %w", err)
 	}
 
-	rsEncoder, err := encoding.NewReedSolomonEncoder(constants.DataShards, constants.ParityShards)
+	rsEncoder, err := encoding.NewReedSolomonEncoder(config.DataShards, config.ParityShards)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create reed-solomon encoder: %w", err)
+		return nil, fmt.Errorf("failed to create Reed-Solomon encoder: %w", err)
 	}
 
 	return &ChunkProcessor{
@@ -42,7 +46,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 		rsEncoder:      rsEncoder,
 		bufferPool: sync.Pool{
 			New: func() interface{} {
-				buffer := make([]byte, constants.MaxChunkSize)
+				buffer := make([]byte, MaxChunkSize)
 				return &buffer
 			},
 		},
@@ -54,27 +58,44 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 	}, nil
 }
 
-func (cp *ChunkProcessor) processChunk(chunk []byte) ([]byte, error) {
+func createBufferPool() sync.Pool {
+	return sync.Pool{
+		New: func() interface{} {
+			buffer := make([]byte, MaxChunkSize)
+			return &buffer
+		},
+	}
+}
+
+func createCompressPool() sync.Pool {
+	return sync.Pool{
+		New: func() interface{} {
+			return &bytes.Buffer{}
+		},
+	}
+}
+
+func (cp *ChunkProcessor) ProcessChunk(chunk []byte) ([]byte, error) {
 	compressedData, err := cp.compressData(chunk)
 	if err != nil {
-		return nil, fmt.Errorf("failed to compress data: %w", err)
+		return nil, fmt.Errorf("compression failed: %w", err)
 	}
 
 	paddedData := cp.padData(compressedData)
 
 	serpentEncrypted, err := cp.serpentCipher.Encrypt(paddedData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt data: %w", err)
+		return nil, fmt.Errorf("Serpent encryption failed: %w", err)
 	}
 
 	chaCha20Encrypted, err := cp.chaCha20Cipher.Encrypt(serpentEncrypted)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt data: %w", err)
+		return nil, fmt.Errorf("ChaCha20 encryption failed: %w", err)
 	}
 
 	rsEncoded, err := cp.rsEncoder.Encode(chaCha20Encrypted)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode data: %w", err)
+		return nil, fmt.Errorf("Reed-Solomon encoding failed: %w", err)
 	}
 
 	return rsEncoded, nil

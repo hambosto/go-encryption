@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/hambosto/go-encryption/internal/algorithms"
-	"github.com/hambosto/go-encryption/internal/constants"
+	"github.com/hambosto/go-encryption/internal/config"
 	"github.com/hambosto/go-encryption/internal/encoding"
 )
 
@@ -22,66 +22,78 @@ type ChunkProcessor struct {
 }
 
 func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
+	if len(key) < 64 {
+		return nil, fmt.Errorf("encryption key must be at least 64 bytes long")
+	}
+
 	serpentCipher, err := algorithms.NewSerpentCipher(key[:32])
 	if err != nil {
-		return nil, fmt.Errorf("failed to create serpent cipher: %w", err)
+		return nil, fmt.Errorf("failed to create Serpent cipher: %w", err)
 	}
 
-	chaCha20Cipher, err := algorithms.NewChaCha20Cipher(key[32:])
+	chaCha20Cipher, err := algorithms.NewChaCha20Cipher(key[32:64])
 	if err != nil {
-		return nil, fmt.Errorf("failed to create chacha20 cipher: %w", err)
+		return nil, fmt.Errorf("failed to create ChaCha20 cipher: %w", err)
 	}
 
-	rsDecoder, err := encoding.NewReedSolomonEncoder(constants.DataShards, constants.ParityShards)
+	rsDecoder, err := encoding.NewReedSolomonEncoder(config.DataShards, config.ParityShards)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create reed solomon decoder: %w", err)
+		return nil, fmt.Errorf("failed to create Reed-Solomon encoder: %w", err)
 	}
 
 	return &ChunkProcessor{
 		serpentCipher:  serpentCipher,
 		chaCha20Cipher: chaCha20Cipher,
 		rsDecoder:      rsDecoder,
-		bufferPool: sync.Pool{
-			New: func() interface{} {
-				buffer := make([]byte, constants.MaxEncryptedChunkSize)
-				return &buffer
-			},
-		},
-		decompressPool: sync.Pool{
-			New: func() interface{} {
-				return &bytes.Buffer{}
-			},
-		},
+		bufferPool:     createBufferPool(),
+		decompressPool: createDecompressPool(),
 	}, nil
 }
 
-func (cp *ChunkProcessor) processChunk(chunk []byte) ([]byte, error) {
+func createBufferPool() sync.Pool {
+	return sync.Pool{
+		New: func() interface{} {
+			buffer := make([]byte, MaxEncryptedChunkSize)
+			return &buffer
+		},
+	}
+}
+
+func createDecompressPool() sync.Pool {
+	return sync.Pool{
+		New: func() interface{} {
+			return &bytes.Buffer{}
+		},
+	}
+}
+
+func (cp *ChunkProcessor) ProcessChunk(chunk []byte) ([]byte, error) {
 	decodedData, err := cp.rsDecoder.Decode(chunk)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode data: %w", err)
+		return nil, fmt.Errorf("reed-solomon decoding failed: %w", err)
 	}
 
 	chaCha20Decrypted, err := cp.chaCha20Cipher.Decrypt(decodedData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt data: %w", err)
+		return nil, fmt.Errorf("ChaCha20 decryption failed: %w", err)
 	}
 
 	serpentDecrypted, err := cp.serpentCipher.Decrypt(chaCha20Decrypted)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt data: %w", err)
+		return nil, fmt.Errorf("Serpent decryption failed: %w", err)
 	}
 
 	return serpentDecrypted, nil
 }
 
-func (cp *ChunkProcessor) decompressData(data []byte) ([]byte, error) {
+func (cp *ChunkProcessor) DecompressData(data []byte) ([]byte, error) {
 	if len(data) < 4 {
-		return nil, fmt.Errorf("invalid data size: must be at least 4 bytes")
+		return nil, fmt.Errorf("invalid data: insufficient bytes for size information")
 	}
 
 	compressedSize := binary.BigEndian.Uint32(data[:4])
 	if compressedSize > uint32(len(data)-4) {
-		return nil, fmt.Errorf("invalid data size: must be at least %d bytes", compressedSize)
+		return nil, fmt.Errorf("invalid compressed data size: expected %d, got %d", compressedSize, len(data)-4)
 	}
 
 	compressedData := data[4 : 4+compressedSize]
@@ -97,7 +109,7 @@ func (cp *ChunkProcessor) decompressData(data []byte) ([]byte, error) {
 	defer zr.Close()
 
 	if _, err := io.Copy(buffer, zr); err != nil {
-		return nil, fmt.Errorf("failed to decompress data: %w", err)
+		return nil, fmt.Errorf("decompression failed: %w", err)
 	}
 
 	result := make([]byte, buffer.Len())
