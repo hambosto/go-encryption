@@ -30,7 +30,7 @@ func (f *FileEncryptor) Encrypt(r io.Reader, w io.Writer, size int64) error {
 
 	jobs := make(chan EncryptJob, f.workers)
 	results := make(chan EncryptResult, f.workers)
-	errChan := make(chan error, 1) // Bidirectional channel
+	errChan := make(chan error, 1)
 
 	var wg sync.WaitGroup
 	for i := 0; i < f.workers; i++ {

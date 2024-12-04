@@ -140,7 +140,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Uses [progressbar](https://github.com/schollz/progressbar) for progress tracking
 - Uses [survey](https://github.com/AlecAivazis/survey) for interactive CLI
-- Uses [figlet4go](https://github.com/mbndr/figlet4go) for ASCII art banner
 
 ## Security Notice
 
