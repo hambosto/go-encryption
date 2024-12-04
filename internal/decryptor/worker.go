@@ -33,30 +33,25 @@ func (f *FileDecryptor) Decrypt(r io.Reader, w io.Writer, size int64) error {
 	results := make(chan ChunkResult, f.workers)
 	errChan := make(chan error, 1)
 
-	// Launch workers.
 	var wg sync.WaitGroup
 	for i := 0; i < f.workers; i++ {
 		wg.Add(1)
 		go f.decryptWorker(jobs, results, &wg)
 	}
 
-	// Launch result collector.
 	var writeWg sync.WaitGroup
 	writeWg.Add(1)
 	go f.resultCollector(w, results, &writeWg, errChan)
 
-	// Parse chunks and enqueue jobs.
 	if err := f.enqueueJobs(r, jobs, errChan); err != nil {
 		return err
 	}
 
-	// Wait for workers and collector to finish.
 	close(jobs)
 	wg.Wait()
 	close(results)
 	writeWg.Wait()
 
-	// Check for any errors during result collection.
 	select {
 	case err := <-errChan:
 		return err
@@ -65,13 +60,11 @@ func (f *FileDecryptor) Decrypt(r io.Reader, w io.Writer, size int64) error {
 	}
 }
 
-// enqueueJobs parses chunks from the reader and sends them to the jobs channel.
 func (f *FileDecryptor) enqueueJobs(r io.Reader, jobs chan<- DecryptJob, errChan chan error) error {
 	sizeBuffer := make([]byte, 4)
 	var chunkIndex uint32
 
 	for {
-		// Read the size of the next chunk.
 		_, err := io.ReadFull(r, sizeBuffer)
 		if err == io.EOF {
 			break
@@ -80,19 +73,16 @@ func (f *FileDecryptor) enqueueJobs(r io.Reader, jobs chan<- DecryptJob, errChan
 			return fmt.Errorf("failed to read chunk size: %w", err)
 		}
 
-		// Validate chunk size.
 		chunkSize := binary.BigEndian.Uint32(sizeBuffer)
 		if err := f.validateChunkSize(chunkSize); err != nil {
 			return err
 		}
 
-		// Read the actual chunk data.
 		chunk := make([]byte, chunkSize)
 		if _, err := io.ReadFull(r, chunk); err != nil {
 			return fmt.Errorf("failed to read chunk data: %w", err)
 		}
 
-		// Send job to the workers or handle errors.
 		select {
 		case jobs <- DecryptJob{data: chunk, index: chunkIndex}:
 			chunkIndex++
@@ -103,7 +93,6 @@ func (f *FileDecryptor) enqueueJobs(r io.Reader, jobs chan<- DecryptJob, errChan
 	return nil
 }
 
-// validateChunkSize ensures the chunk size is valid.
 func (f *FileDecryptor) validateChunkSize(chunkSize uint32) error {
 	if chunkSize == 0 || chunkSize > constants.MaxEncryptedChunkSize {
 		return fmt.Errorf("invalid chunk size: must be between 1 and %d", constants.MaxEncryptedChunkSize)
@@ -114,7 +103,6 @@ func (f *FileDecryptor) validateChunkSize(chunkSize uint32) error {
 	return nil
 }
 
-// decryptWorker processes jobs and sends results to the results channel.
 func (f *FileDecryptor) decryptWorker(jobs <-chan DecryptJob, results chan<- ChunkResult, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -135,7 +123,6 @@ func (f *FileDecryptor) decryptWorker(jobs <-chan DecryptJob, results chan<- Chu
 	}
 }
 
-// resultCollector writes processed chunks to the writer in the correct order.
 func (f *FileDecryptor) resultCollector(w io.Writer, results <-chan ChunkResult, wg *sync.WaitGroup, errChan chan<- error) {
 	defer wg.Done()
 
@@ -148,10 +135,8 @@ func (f *FileDecryptor) resultCollector(w io.Writer, results <-chan ChunkResult,
 			return
 		}
 
-		// Add result to pending map.
 		pendingResults[result.index] = result
 
-		// Write chunks in order if available.
 		for {
 			if chunk, ok := pendingResults[nextIndex]; ok {
 				if err := f.writeChunk(w, chunk.data); err != nil {
@@ -173,7 +158,6 @@ func (f *FileDecryptor) resultCollector(w io.Writer, results <-chan ChunkResult,
 	}
 }
 
-// writeChunk writes a single chunk to the writer.
 func (f *FileDecryptor) writeChunk(w io.Writer, chunk []byte) error {
 	if _, err := w.Write(chunk); err != nil {
 		return fmt.Errorf("failed to write chunk data: %w", err)
