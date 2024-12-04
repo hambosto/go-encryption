@@ -6,7 +6,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/hambosto/go-encryption/internal/constants"
+	"github.com/hambosto/go-encryption/internal/config"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -94,11 +94,11 @@ func (f *FileDecryptor) enqueueJobs(r io.Reader, jobs chan<- DecryptJob, errChan
 }
 
 func (f *FileDecryptor) validateChunkSize(chunkSize uint32) error {
-	if chunkSize == 0 || chunkSize > constants.MaxEncryptedChunkSize {
-		return fmt.Errorf("invalid chunk size: must be between 1 and %d", constants.MaxEncryptedChunkSize)
+	if chunkSize == 0 || chunkSize > MaxEncryptedChunkSize {
+		return fmt.Errorf("invalid chunk size: must be between 1 and %d", MaxEncryptedChunkSize)
 	}
-	if chunkSize%(constants.DataShards+constants.ParityShards) != 0 {
-		return fmt.Errorf("invalid chunk size: must be a multiple of %d", constants.DataShards+constants.ParityShards)
+	if chunkSize%(config.DataShards+config.ParityShards) != 0 {
+		return fmt.Errorf("invalid chunk size: must be a multiple of %d", config.DataShards+config.ParityShards)
 	}
 	return nil
 }
@@ -107,13 +107,13 @@ func (f *FileDecryptor) decryptWorker(jobs <-chan DecryptJob, results chan<- Chu
 	defer wg.Done()
 
 	for job := range jobs {
-		processed, err := f.chunkProcessor.processChunk(job.data)
+		processed, err := f.chunkProcessor.ProcessChunk(job.data)
 		if err != nil {
 			results <- ChunkResult{index: job.index, err: err}
 			continue
 		}
 
-		decompressed, err := f.chunkProcessor.decompressData(processed)
+		decompressed, err := f.chunkProcessor.DecompressData(processed)
 		results <- ChunkResult{
 			index: job.index,
 			data:  decompressed,

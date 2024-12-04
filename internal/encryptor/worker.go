@@ -80,7 +80,7 @@ func (f *FileEncryptor) distributeJobs(r io.Reader, jobs chan<- EncryptJob, errC
 		select {
 		case jobs <- EncryptJob{chunk: chunk, index: chunkIndex}:
 			chunkIndex++
-		case err := <-errChan: // Can now receive errors here
+		case err := <-errChan:
 			return fmt.Errorf("failed to enqueue chunk: %w", err)
 		}
 	}
@@ -91,7 +91,7 @@ func (f *FileEncryptor) encryptWorker(jobs <-chan EncryptJob, results chan<- Enc
 	defer wg.Done()
 
 	for job := range jobs {
-		processed, err := f.chunkProcessor.processChunk(job.chunk)
+		processed, err := f.chunkProcessor.ProcessChunk(job.chunk)
 		results <- EncryptResult{
 			index: job.index,
 			data:  processed,
