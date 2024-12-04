@@ -12,22 +12,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for all tags and branches
+          fetch-depth: 0
       - name: Get version
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
       - name: Generate changelog
         run: |
           git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- %s" > CHANGELOG.md
-          echo "Changelog generated:"
           cat CHANGELOG.md
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create ${{ steps.get_version.outputs.VERSION }} \
-            --title "Release ${{ steps.get_version.outputs.VERSION }}" \
-            --notes-file CHANGELOG.md
+          --title "Release ${{ steps.get_version.outputs.VERSION }}" \
+          --notes-file CHANGELOG.md
+
   build_and_upload:
     needs: create_release
     runs-on: ubuntu-latest
@@ -54,16 +54,15 @@ jobs:
         with:
           go-version: 'stable'
           check-latest: true
-      
       - name: Install UPX
         run: |
           sudo apt-get update
           sudo apt-get install -y upx-ucl
-      
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+        id: build
         run: |
           output_name="go-encryption-${{ needs.create_release.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}"
           if [ "${{ matrix.goos }}" = "windows" ]; then
@@ -71,12 +70,10 @@ jobs:
           fi
           CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static" -s -w' -o "$output_name" .
           echo "ASSET_NAME=$output_name" >> $GITHUB_OUTPUT
-        id: build
-      
       - name: Compress binary with UPX
-        run: |
-          upx --best --lzma "${{ steps.build.outputs.ASSET_NAME }}"
-      
+        # Skip UPX for Windows ARM64 to avoid compression failures
+        if: matrix.goos != 'windows' || matrix.goarch != 'arm64'
+        run: upx --best --lzma "${{ steps.build.outputs.ASSET_NAME }}"
       - name: Upload Release Asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
