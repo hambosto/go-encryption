@@ -10,6 +10,11 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
+type DecryptJob struct {
+	data  []byte
+	index uint32
+}
+
 type ChunkResult struct {
 	index uint32
 	data  []byte
@@ -18,96 +23,99 @@ type ChunkResult struct {
 }
 
 func (f *FileDecryptor) Decrypt(r io.Reader, w io.Writer, size int64) error {
-	if r == nil {
-		return fmt.Errorf("invalid reader: must be non-nil")
-	}
-
-	if w == nil {
-		return fmt.Errorf("invalid writer: must be non-nil")
+	if r == nil || w == nil {
+		return fmt.Errorf("reader and writer must be non-nil")
 	}
 
 	f.bar = progressbar.DefaultBytes(size, "Decrypting...")
 
-	jobs := make(chan struct {
-		data  []byte
-		index uint32
-	}, f.workers)
-
+	jobs := make(chan DecryptJob, f.workers)
 	results := make(chan ChunkResult, f.workers)
 	errChan := make(chan error, 1)
 
+	// Launch workers.
 	var wg sync.WaitGroup
 	for i := 0; i < f.workers; i++ {
 		wg.Add(1)
 		go f.decryptWorker(jobs, results, &wg)
 	}
 
+	// Launch result collector.
 	var writeWg sync.WaitGroup
 	writeWg.Add(1)
 	go f.resultCollector(w, results, &writeWg, errChan)
 
-	sizeBuffer := make([]byte, 4)
-	var chunkIndex uint32
-	for {
-		_, err := r.Read(sizeBuffer)
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			close(jobs)
-			return fmt.Errorf("failed to read chunk size: %w", err)
-		}
-
-		chunkSize := binary.BigEndian.Uint32(sizeBuffer)
-
-		if chunkSize == 0 || chunkSize > constants.MaxEncryptedChunkSize {
-			close(jobs)
-			return fmt.Errorf("invalid chunk size: must be between 0 and %d", constants.MaxEncryptedChunkSize)
-		}
-
-		if chunkSize%(constants.DataShards+constants.ParityShards) != 0 {
-			close(jobs)
-			return fmt.Errorf("invalid chunk size: must be a multiple of %d", constants.DataShards+constants.ParityShards)
-		}
-
-		chunk := make([]byte, chunkSize)
-		if _, err := io.ReadFull(r, chunk); err != nil {
-			close(jobs)
-			return fmt.Errorf("failed to read chunk data: %w", err)
-		}
-
-		select {
-		case jobs <- struct {
-			data  []byte
-			index uint32
-		}{chunk, chunkIndex}:
-		case err := <-errChan:
-			close(jobs)
-			return err
-		}
-
-		chunkIndex++
+	// Parse chunks and enqueue jobs.
+	if err := f.enqueueJobs(r, jobs, errChan); err != nil {
+		return err
 	}
 
+	// Wait for workers and collector to finish.
 	close(jobs)
 	wg.Wait()
 	close(results)
 	writeWg.Wait()
 
+	// Check for any errors during result collection.
 	select {
 	case err := <-errChan:
-		return fmt.Errorf("failed to write chunks: %w", err)
+		return err
 	default:
 		return nil
 	}
 }
 
-func (f *FileDecryptor) decryptWorker(jobs <-chan struct {
-	data  []byte
-	index uint32
-}, results chan<- ChunkResult, wg *sync.WaitGroup,
-) {
+// enqueueJobs parses chunks from the reader and sends them to the jobs channel.
+func (f *FileDecryptor) enqueueJobs(r io.Reader, jobs chan<- DecryptJob, errChan chan error) error {
+	sizeBuffer := make([]byte, 4)
+	var chunkIndex uint32
+
+	for {
+		// Read the size of the next chunk.
+		_, err := io.ReadFull(r, sizeBuffer)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read chunk size: %w", err)
+		}
+
+		// Validate chunk size.
+		chunkSize := binary.BigEndian.Uint32(sizeBuffer)
+		if err := f.validateChunkSize(chunkSize); err != nil {
+			return err
+		}
+
+		// Read the actual chunk data.
+		chunk := make([]byte, chunkSize)
+		if _, err := io.ReadFull(r, chunk); err != nil {
+			return fmt.Errorf("failed to read chunk data: %w", err)
+		}
+
+		// Send job to the workers or handle errors.
+		select {
+		case jobs <- DecryptJob{data: chunk, index: chunkIndex}:
+			chunkIndex++
+		case err := <-errChan:
+			return err
+		}
+	}
+	return nil
+}
+
+// validateChunkSize ensures the chunk size is valid.
+func (f *FileDecryptor) validateChunkSize(chunkSize uint32) error {
+	if chunkSize == 0 || chunkSize > constants.MaxEncryptedChunkSize {
+		return fmt.Errorf("invalid chunk size: must be between 1 and %d", constants.MaxEncryptedChunkSize)
+	}
+	if chunkSize%(constants.DataShards+constants.ParityShards) != 0 {
+		return fmt.Errorf("invalid chunk size: must be a multiple of %d", constants.DataShards+constants.ParityShards)
+	}
+	return nil
+}
+
+// decryptWorker processes jobs and sends results to the results channel.
+func (f *FileDecryptor) decryptWorker(jobs <-chan DecryptJob, results chan<- ChunkResult, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for job := range jobs {
@@ -127,6 +135,7 @@ func (f *FileDecryptor) decryptWorker(jobs <-chan struct {
 	}
 }
 
+// resultCollector writes processed chunks to the writer in the correct order.
 func (f *FileDecryptor) resultCollector(w io.Writer, results <-chan ChunkResult, wg *sync.WaitGroup, errChan chan<- error) {
 	defer wg.Done()
 
@@ -139,8 +148,10 @@ func (f *FileDecryptor) resultCollector(w io.Writer, results <-chan ChunkResult,
 			return
 		}
 
+		// Add result to pending map.
 		pendingResults[result.index] = result
 
+		// Write chunks in order if available.
 		for {
 			if chunk, ok := pendingResults[nextIndex]; ok {
 				if err := f.writeChunk(w, chunk.data); err != nil {
@@ -162,6 +173,7 @@ func (f *FileDecryptor) resultCollector(w io.Writer, results <-chan ChunkResult,
 	}
 }
 
+// writeChunk writes a single chunk to the writer.
 func (f *FileDecryptor) writeChunk(w io.Writer, chunk []byte) error {
 	if _, err := w.Write(chunk); err != nil {
 		return fmt.Errorf("failed to write chunk data: %w", err)
