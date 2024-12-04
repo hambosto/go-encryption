@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hambosto/go-encryption/internal/constants"
+	"github.com/hambosto/go-encryption/internal/config"
 )
 
 func Read(r io.Reader) (FileHeader, error) {
 	header := FileHeader{
-		Salt:          make([]byte, constants.SaltSize),
-		SerpentNonce:  make([]byte, constants.NonceSize),
-		ChaCha20Nonce: make([]byte, constants.NonceSizeX),
+		Salt:          make([]byte, config.SaltSize),
+		SerpentNonce:  make([]byte, config.NonceSize),
+		ChaCha20Nonce: make([]byte, config.NonceSizeX),
 	}
 
 	if _, err := io.ReadFull(r, header.Salt); err != nil {

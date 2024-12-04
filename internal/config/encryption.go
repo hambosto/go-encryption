@@ -1,6 +1,5 @@
-package constants
+package config
 
-// Encryption-related constants
 const (
 	KeySize    = 64
 	SaltSize   = 32

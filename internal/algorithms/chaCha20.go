@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/hambosto/go-encryption/internal/constants"
+	"github.com/hambosto/go-encryption/internal/config"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
@@ -15,7 +15,7 @@ type ChaCha20Cipher struct {
 }
 
 func NewChaCha20Cipher(key []byte) (*ChaCha20Cipher, error) {
-	nonce := make([]byte, constants.NonceSizeX)
+	nonce := make([]byte, config.NonceSizeX)
 	if _, err := rand.Read(nonce); err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (c *ChaCha20Cipher) Encrypt(plaintext []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	nonce := make([]byte, constants.NonceSize)
+	nonce := make([]byte, config.NonceSize)
 	copy(nonce, c.baseNone)
 
 	return aead.Seal(nil, nonce, plaintext, nil), nil
@@ -53,14 +53,14 @@ func (c *ChaCha20Cipher) Decrypt(ciphertext []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	nonce := make([]byte, constants.NonceSize)
+	nonce := make([]byte, config.NonceSize)
 	copy(nonce, c.baseNone)
 
 	return aead.Open(nil, nonce, ciphertext, nil)
 }
 
 func (c *ChaCha20Cipher) SetNonce(nonce []byte) error {
-	if len(nonce) != constants.NonceSizeX {
+	if len(nonce) != config.NonceSizeX {
 		return fmt.Errorf("invalid nonce size: %d bytes", len(nonce))
 	}
 
