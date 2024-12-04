@@ -45,26 +45,18 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 		serpentCipher:  serpentCipher,
 		chaCha20Cipher: chaCha20Cipher,
 		rsDecoder:      rsDecoder,
-		bufferPool:     createBufferPool(),
-		decompressPool: createDecompressPool(),
+		bufferPool: sync.Pool{
+			New: func() interface{} {
+				buffer := make([]byte, MaxEncryptedChunkSize)
+				return &buffer
+			},
+		},
+		decompressPool: sync.Pool{
+			New: func() interface{} {
+				return &bytes.Buffer{}
+			},
+		},
 	}, nil
-}
-
-func createBufferPool() sync.Pool {
-	return sync.Pool{
-		New: func() interface{} {
-			buffer := make([]byte, MaxEncryptedChunkSize)
-			return &buffer
-		},
-	}
-}
-
-func createDecompressPool() sync.Pool {
-	return sync.Pool{
-		New: func() interface{} {
-			return &bytes.Buffer{}
-		},
-	}
 }
 
 func (cp *ChunkProcessor) ProcessChunk(chunk []byte) ([]byte, error) {
