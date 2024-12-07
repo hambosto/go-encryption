@@ -12,6 +12,11 @@ import (
 	"github.com/hambosto/go-encryption/internal/encoding"
 )
 
+const (
+	MaxChunkSize          = 1024 * 1024
+	MaxEncryptedChunkSize = ((MaxChunkSize + (MaxChunkSize / 10) + 16 + 4 + (4 - 1)) / 4) * (4 + 10)
+)
+
 type ChunkProcessor struct {
 	serpentCipher  *algorithms.SerpentCipher
 	chaCha20Cipher *algorithms.ChaCha20Cipher
@@ -56,23 +61,6 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 			},
 		},
 	}, nil
-}
-
-func createBufferPool() sync.Pool {
-	return sync.Pool{
-		New: func() interface{} {
-			buffer := make([]byte, MaxChunkSize)
-			return &buffer
-		},
-	}
-}
-
-func createCompressPool() sync.Pool {
-	return sync.Pool{
-		New: func() interface{} {
-			return &bytes.Buffer{}
-		},
-	}
 }
 
 func (cp *ChunkProcessor) ProcessChunk(chunk []byte) ([]byte, error) {
