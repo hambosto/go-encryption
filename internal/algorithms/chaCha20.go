@@ -2,6 +2,7 @@ package algorithms
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 
 	"github.com/hambosto/go-encryption/internal/config"
@@ -9,37 +10,34 @@ import (
 )
 
 type ChaCha20Cipher struct {
-	key      []byte
-	nonce    []byte
-	baseNone []byte
+	key   []byte
+	nonce []byte
 }
 
 func NewChaCha20Cipher(key []byte) (*ChaCha20Cipher, error) {
-	nonce := make([]byte, config.NonceSizeX)
-	if _, err := rand.Read(nonce); err != nil {
-		return nil, err
+	if len(key) != chacha20poly1305.KeySize {
+		return nil, fmt.Errorf("invalid key size: %d bytes, expected %d bytes", len(key), chacha20poly1305.KeySize)
 	}
 
-	return &ChaCha20Cipher{
-		key:   key,
-		nonce: nonce,
-	}, nil
+	nonce := make([]byte, config.NonceSizeX)
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, fmt.Errorf("failed to generate random nonce: %w", err)
+	}
+
+	return &ChaCha20Cipher{key: key, nonce: nonce}, nil
 }
 
 func (c *ChaCha20Cipher) Encrypt(plaintext []byte) ([]byte, error) {
-	if len(plaintext)%16 != 0 {
-		padding := make([]byte, 16-(len(plaintext)%16))
-		plaintext = append(plaintext, padding...)
+	if len(plaintext) == 0 {
+		return nil, errors.New("plaintext cannot be empty")
 	}
 
 	aead, err := chacha20poly1305.New(c.key)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create AEAD instance: %w", err)
 	}
 
-	nonce := make([]byte, config.NonceSize)
-	copy(nonce, c.baseNone)
-
+	nonce := c.nonce[:chacha20poly1305.NonceSize]
 	return aead.Seal(nil, nonce, plaintext, nil), nil
 }
 
@@ -50,20 +48,22 @@ func (c *ChaCha20Cipher) Decrypt(ciphertext []byte) ([]byte, error) {
 
 	aead, err := chacha20poly1305.New(c.key)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create AEAD instance: %w", err)
 	}
 
-	nonce := make([]byte, config.NonceSize)
-	copy(nonce, c.baseNone)
+	nonce := c.nonce[:chacha20poly1305.NonceSize]
+	plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("decryption failed: %w", err)
+	}
 
-	return aead.Open(nil, nonce, ciphertext, nil)
+	return plaintext, nil
 }
 
 func (c *ChaCha20Cipher) SetNonce(nonce []byte) error {
 	if len(nonce) != config.NonceSizeX {
-		return fmt.Errorf("invalid nonce size: %d bytes", len(nonce))
+		return fmt.Errorf("invalid nonce size: %d bytes, expected %d bytes", len(nonce), config.NonceSizeX)
 	}
-
 	c.nonce = nonce
 	return nil
 }
