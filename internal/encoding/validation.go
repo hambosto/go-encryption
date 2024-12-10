@@ -2,16 +2,16 @@ package encoding
 
 import "fmt"
 
-func validateConfig(config ReedSolomonConfig) error {
-	if config.DataShards < MinShards || config.DataShards > MaxShards {
+func validateConfig(dataShards, parityShards int) error {
+	if dataShards < MinShards || dataShards > MaxShards {
 		return fmt.Errorf("invalid number of data shards: must be between %d and %d", MinShards, MaxShards)
 	}
 
-	if config.ParityShards < MinShards || config.ParityShards > MaxShards {
+	if parityShards < MinShards || parityShards > MaxShards {
 		return fmt.Errorf("invalid number of parity shards: must be between %d and %d", MinShards, MaxShards)
 	}
 
-	totalShards := config.DataShards + config.ParityShards
+	totalShards := dataShards + parityShards
 	if totalShards > MaxShards {
 		return fmt.Errorf("total number shards (%d) exceeds maximum allowed (%d)", totalShards, MaxShards)
 	}

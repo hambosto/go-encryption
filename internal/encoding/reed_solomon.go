@@ -14,7 +14,7 @@ type ReedSolomonEncoder struct {
 }
 
 func NewReedSolomonEncoder(dataShards, parityShards int) (*ReedSolomonEncoder, error) {
-	if err := validateConfig(ReedSolomonConfig{DataShards: dataShards, ParityShards: parityShards}); err != nil {
+	if err := validateConfig(dataShards, parityShards); err != nil {
 		return nil, err
 	}
 
