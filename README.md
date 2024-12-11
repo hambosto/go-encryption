@@ -18,7 +18,7 @@ A secure and efficient file encryption tool written in Go that implements multi-
 - **Interactive CLI**: User-friendly command-line interface with file selection
 - **Cross-platform**: Supports Windows, macOS, and Linux
 
-⚠️ **Important File Size Notice**: Due to the Reed-Solomon error correction encoding, encrypted files will be significantly larger than the original files. For example, a 26MB unencrypted file will become approximately 96MB after encryption. Please ensure you have sufficient storage space available before encrypting large files.
+⚠️ **Important File Size Notice**: Encrypted files will be significantly larger than the original files due to chunk-based encryption. For example, a 26MB unencrypted file will become approximately 96MB after encryption. Please ensure you have sufficient storage space available before encrypting large files.
 
 ## Installation
 
