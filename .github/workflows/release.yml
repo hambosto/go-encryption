@@ -54,10 +54,6 @@ jobs:
         with:
           go-version: 'stable'
           check-latest: true
-      - name: Install UPX
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y upx-ucl
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
@@ -70,9 +66,6 @@ jobs:
           fi
           CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static" -s -w' -o "$output_name" .
           echo "ASSET_NAME=$output_name" >> $GITHUB_OUTPUT
-      - name: Compress binary with UPX
-        if: ${{ matrix.goos != 'windows' || matrix.goarch != 'arm64' }}
-        run: upx --best --lzma "${{ steps.build.outputs.ASSET_NAME }}"
       - name: Upload Release Asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
