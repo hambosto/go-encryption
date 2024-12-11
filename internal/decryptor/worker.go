@@ -33,13 +33,24 @@ func (f *FileDecryptor) Decrypt(r io.Reader, w io.Writer, size int64) error {
 	results := make(chan ChunkResult, f.workers)
 	errChan := make(chan error, 1)
 
-	var wg sync.WaitGroup
+	return f.runDecryptionPipeline(r, w, jobs, results, errChan)
+}
+
+func (f *FileDecryptor) runDecryptionPipeline(
+	r io.Reader,
+	w io.Writer,
+	jobs chan DecryptJob,
+	results chan ChunkResult,
+	errChan chan error,
+) error {
+	var workerWg sync.WaitGroup
+	var writeWg sync.WaitGroup
+
 	for i := 0; i < f.workers; i++ {
-		wg.Add(1)
-		go f.decryptWorker(jobs, results, &wg)
+		workerWg.Add(1)
+		go f.decryptWorker(jobs, results, &workerWg)
 	}
 
-	var writeWg sync.WaitGroup
 	writeWg.Add(1)
 	go f.resultCollector(w, results, &writeWg, errChan)
 
@@ -48,7 +59,7 @@ func (f *FileDecryptor) Decrypt(r io.Reader, w io.Writer, size int64) error {
 	}
 
 	close(jobs)
-	wg.Wait()
+	workerWg.Wait()
 	close(results)
 	writeWg.Wait()
 
@@ -60,7 +71,11 @@ func (f *FileDecryptor) Decrypt(r io.Reader, w io.Writer, size int64) error {
 	}
 }
 
-func (f *FileDecryptor) enqueueJobs(r io.Reader, jobs chan<- DecryptJob, errChan chan error) error {
+func (f *FileDecryptor) enqueueJobs(
+	r io.Reader,
+	jobs chan<- DecryptJob,
+	errChan chan error,
+) error {
 	sizeBuffer := make([]byte, 4)
 	var chunkIndex uint32
 
@@ -74,8 +89,12 @@ func (f *FileDecryptor) enqueueJobs(r io.Reader, jobs chan<- DecryptJob, errChan
 		}
 
 		chunkSize := binary.BigEndian.Uint32(sizeBuffer)
-		if err := f.validateChunkSize(chunkSize); err != nil {
-			return err
+		if chunkSize == 0 || chunkSize > MaxEncryptedChunkSize {
+			return fmt.Errorf("invalid chunk size: must be between 1 and %d", MaxEncryptedChunkSize)
+		}
+
+		if chunkSize%(config.DataShards+config.ParityShards) != 0 {
+			return fmt.Errorf("invalid chunk size: must be a multiple of %d", config.DataShards+config.ParityShards)
 		}
 
 		chunk := make([]byte, chunkSize)
@@ -93,19 +112,12 @@ func (f *FileDecryptor) enqueueJobs(r io.Reader, jobs chan<- DecryptJob, errChan
 	return nil
 }
 
-func (f *FileDecryptor) validateChunkSize(chunkSize uint32) error {
-	if chunkSize == 0 || chunkSize > MaxEncryptedChunkSize {
-		return fmt.Errorf("invalid chunk size: must be between 1 and %d", MaxEncryptedChunkSize)
-	}
-	if chunkSize%(config.DataShards+config.ParityShards) != 0 {
-		return fmt.Errorf("invalid chunk size: must be a multiple of %d", config.DataShards+config.ParityShards)
-	}
-	return nil
-}
-
-func (f *FileDecryptor) decryptWorker(jobs <-chan DecryptJob, results chan<- ChunkResult, wg *sync.WaitGroup) {
+func (f *FileDecryptor) decryptWorker(
+	jobs <-chan DecryptJob,
+	results chan<- ChunkResult,
+	wg *sync.WaitGroup,
+) {
 	defer wg.Done()
-
 	for job := range jobs {
 		processed, err := f.chunkProcessor.ProcessChunk(job.data)
 		if err != nil {
@@ -123,9 +135,13 @@ func (f *FileDecryptor) decryptWorker(jobs <-chan DecryptJob, results chan<- Chu
 	}
 }
 
-func (f *FileDecryptor) resultCollector(w io.Writer, results <-chan ChunkResult, wg *sync.WaitGroup, errChan chan<- error) {
+func (f *FileDecryptor) resultCollector(
+	w io.Writer,
+	results <-chan ChunkResult,
+	wg *sync.WaitGroup,
+	errChan chan<- error,
+) {
 	defer wg.Done()
-
 	pendingResults := make(map[uint32]ChunkResult)
 	nextIndex := uint32(0)
 
@@ -138,22 +154,23 @@ func (f *FileDecryptor) resultCollector(w io.Writer, results <-chan ChunkResult,
 		pendingResults[result.index] = result
 
 		for {
-			if chunk, ok := pendingResults[nextIndex]; ok {
-				if err := f.writeChunk(w, chunk.data); err != nil {
-					errChan <- fmt.Errorf("failed to write chunk %d: %w", chunk.index, err)
-					return
-				}
-
-				if err := f.bar.Add(chunk.size); err != nil {
-					errChan <- fmt.Errorf("failed to update progress bar: %w", err)
-					return
-				}
-
-				delete(pendingResults, nextIndex)
-				nextIndex++
-			} else {
+			chunk, exists := pendingResults[nextIndex]
+			if !exists {
 				break
 			}
+
+			if err := f.writeChunk(w, chunk.data); err != nil {
+				errChan <- fmt.Errorf("failed to write chunk %d: %w", chunk.index, err)
+				return
+			}
+
+			if err := f.bar.Add(chunk.size); err != nil {
+				errChan <- fmt.Errorf("failed to update progress bar: %w", err)
+				return
+			}
+
+			delete(pendingResults, nextIndex)
+			nextIndex++
 		}
 	}
 }
