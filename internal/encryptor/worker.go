@@ -32,13 +32,24 @@ func (f *FileEncryptor) Encrypt(r io.Reader, w io.Writer, size int64) error {
 	results := make(chan EncryptResult, f.workers)
 	errChan := make(chan error, 1)
 
-	var wg sync.WaitGroup
+	return f.runEncryptionPipeline(r, w, jobs, results, errChan)
+}
+
+func (f *FileEncryptor) runEncryptionPipeline(
+	r io.Reader,
+	w io.Writer,
+	jobs chan EncryptJob,
+	results chan EncryptResult,
+	errChan chan error,
+) error {
+	var workerWg sync.WaitGroup
+	var writeWg sync.WaitGroup
+
 	for i := 0; i < f.workers; i++ {
-		wg.Add(1)
-		go f.encryptWorker(jobs, results, &wg)
+		workerWg.Add(1)
+		go f.encryptWorker(jobs, results, &workerWg)
 	}
 
-	var writeWg sync.WaitGroup
 	writeWg.Add(1)
 	go f.resultCollector(w, results, &writeWg, errChan)
 
@@ -47,8 +58,7 @@ func (f *FileEncryptor) Encrypt(r io.Reader, w io.Writer, size int64) error {
 	}
 
 	close(jobs)
-	wg.Wait()
-
+	workerWg.Wait()
 	close(results)
 	writeWg.Wait()
 
@@ -60,7 +70,11 @@ func (f *FileEncryptor) Encrypt(r io.Reader, w io.Writer, size int64) error {
 	}
 }
 
-func (f *FileEncryptor) distributeJobs(r io.Reader, jobs chan<- EncryptJob, errChan chan error) error {
+func (f *FileEncryptor) distributeJobs(
+	r io.Reader,
+	jobs chan<- EncryptJob,
+	errChan chan error,
+) error {
 	buffer := f.chunkProcessor.bufferPool.Get().(*[]byte)
 	defer f.chunkProcessor.bufferPool.Put(buffer)
 
@@ -87,9 +101,12 @@ func (f *FileEncryptor) distributeJobs(r io.Reader, jobs chan<- EncryptJob, errC
 	return nil
 }
 
-func (f *FileEncryptor) encryptWorker(jobs <-chan EncryptJob, results chan<- EncryptResult, wg *sync.WaitGroup) {
+func (f *FileEncryptor) encryptWorker(
+	jobs <-chan EncryptJob,
+	results chan<- EncryptResult,
+	wg *sync.WaitGroup,
+) {
 	defer wg.Done()
-
 	for job := range jobs {
 		processed, err := f.chunkProcessor.ProcessChunk(job.chunk)
 		results <- EncryptResult{
@@ -101,9 +118,13 @@ func (f *FileEncryptor) encryptWorker(jobs <-chan EncryptJob, results chan<- Enc
 	}
 }
 
-func (f *FileEncryptor) resultCollector(w io.Writer, results <-chan EncryptResult, wg *sync.WaitGroup, errChan chan<- error) {
+func (f *FileEncryptor) resultCollector(
+	w io.Writer,
+	results <-chan EncryptResult,
+	wg *sync.WaitGroup,
+	errChan chan<- error,
+) {
 	defer wg.Done()
-
 	pendingResults := make(map[uint32]EncryptResult)
 	nextIndex := uint32(0)
 
@@ -116,22 +137,23 @@ func (f *FileEncryptor) resultCollector(w io.Writer, results <-chan EncryptResul
 		pendingResults[result.index] = result
 
 		for {
-			if chunk, exists := pendingResults[nextIndex]; exists {
-				if err := f.writeChunk(w, chunk.data); err != nil {
-					errChan <- fmt.Errorf("failed to write chunk %d: %w", chunk.index, err)
-					return
-				}
-
-				if err := f.bar.Add(chunk.size); err != nil {
-					errChan <- fmt.Errorf("failed to update progress bar: %w", err)
-					return
-				}
-
-				delete(pendingResults, nextIndex)
-				nextIndex++
-			} else {
+			chunk, exists := pendingResults[nextIndex]
+			if !exists {
 				break
 			}
+
+			if err := f.writeChunk(w, chunk.data); err != nil {
+				errChan <- fmt.Errorf("failed to write chunk %d: %w", chunk.index, err)
+				return
+			}
+
+			if err := f.bar.Add(chunk.size); err != nil {
+				errChan <- fmt.Errorf("failed to update progress bar: %w", err)
+				return
+			}
+
+			delete(pendingResults, nextIndex)
+			nextIndex++
 		}
 	}
 }
@@ -139,7 +161,6 @@ func (f *FileEncryptor) resultCollector(w io.Writer, results <-chan EncryptResul
 func (f *FileEncryptor) writeChunk(w io.Writer, chunk []byte) error {
 	sizeBuffer := make([]byte, 4)
 	binary.BigEndian.PutUint32(sizeBuffer, uint32(len(chunk)))
-
 	if _, err := w.Write(sizeBuffer); err != nil {
 		return fmt.Errorf("failed to write chunk size: %w", err)
 	}
