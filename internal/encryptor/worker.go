@@ -135,32 +135,41 @@ func (f *FileEncryptor) resultCollector(
 		}
 
 		pendingResults[result.index] = result
+		f.processOrderedResults(w, pendingResults, &nextIndex, errChan)
+	}
+}
 
-		for {
-			chunk, exists := pendingResults[nextIndex]
-			if !exists {
-				break
-			}
-
-			if err := f.writeChunk(w, chunk.data); err != nil {
-				errChan <- fmt.Errorf("failed to write chunk %d: %w", chunk.index, err)
-				return
-			}
-
-			if err := f.bar.Add(chunk.size); err != nil {
-				errChan <- fmt.Errorf("failed to update progress bar: %w", err)
-				return
-			}
-
-			delete(pendingResults, nextIndex)
-			nextIndex++
+func (f *FileEncryptor) processOrderedResults(
+	w io.Writer,
+	pendingResults map[uint32]EncryptResult,
+	nextIndex *uint32,
+	errChan chan<- error,
+) {
+	for {
+		chunk, exists := pendingResults[*nextIndex]
+		if !exists {
+			break
 		}
+
+		if err := f.writeChunk(w, chunk.data); err != nil {
+			errChan <- fmt.Errorf("failed to write chunk %d: %w", chunk.index, err)
+			return
+		}
+
+		if err := f.bar.Add(chunk.size); err != nil {
+			errChan <- fmt.Errorf("failed to update progress bar: %w", err)
+			return
+		}
+
+		delete(pendingResults, *nextIndex)
+		*nextIndex++
 	}
 }
 
 func (f *FileEncryptor) writeChunk(w io.Writer, chunk []byte) error {
 	sizeBuffer := make([]byte, 4)
 	binary.BigEndian.PutUint32(sizeBuffer, uint32(len(chunk)))
+
 	if _, err := w.Write(sizeBuffer); err != nil {
 		return fmt.Errorf("failed to write chunk size: %w", err)
 	}
