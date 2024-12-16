@@ -6,7 +6,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/hambosto/go-encryption/internal/config"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -89,14 +88,6 @@ func (f *FileDecryptor) enqueueJobs(
 		}
 
 		chunkSize := binary.BigEndian.Uint32(sizeBuffer)
-		if chunkSize == 0 || chunkSize > MaxEncryptedChunkSize {
-			return fmt.Errorf("invalid chunk size: must be between 1 and %d", MaxEncryptedChunkSize)
-		}
-
-		if chunkSize%(config.DataShards+config.ParityShards) != 0 {
-			return fmt.Errorf("invalid chunk size: must be a multiple of %d", config.DataShards+config.ParityShards)
-		}
-
 		chunk := make([]byte, chunkSize)
 		if _, err := io.ReadFull(r, chunk); err != nil {
 			return fmt.Errorf("failed to read chunk data: %w", err)
@@ -152,26 +143,34 @@ func (f *FileDecryptor) resultCollector(
 		}
 
 		pendingResults[result.index] = result
+		f.processOrderedResults(w, pendingResults, &nextIndex, errChan)
+	}
+}
 
-		for {
-			chunk, exists := pendingResults[nextIndex]
-			if !exists {
-				break
-			}
-
-			if err := f.writeChunk(w, chunk.data); err != nil {
-				errChan <- fmt.Errorf("failed to write chunk %d: %w", chunk.index, err)
-				return
-			}
-
-			if err := f.bar.Add(chunk.size); err != nil {
-				errChan <- fmt.Errorf("failed to update progress bar: %w", err)
-				return
-			}
-
-			delete(pendingResults, nextIndex)
-			nextIndex++
+func (f *FileDecryptor) processOrderedResults(
+	w io.Writer,
+	pendingResults map[uint32]ChunkResult,
+	nextIndex *uint32,
+	errChan chan<- error,
+) {
+	for {
+		chunk, exists := pendingResults[*nextIndex]
+		if !exists {
+			break
 		}
+
+		if err := f.writeChunk(w, chunk.data); err != nil {
+			errChan <- fmt.Errorf("failed to write chunk %d: %w", chunk.index, err)
+			return
+		}
+
+		if err := f.bar.Add(chunk.size); err != nil {
+			errChan <- fmt.Errorf("failed to update progress bar: %w", err)
+			return
+		}
+
+		delete(pendingResults, *nextIndex)
+		*nextIndex++
 	}
 }
 
