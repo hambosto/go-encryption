@@ -86,12 +86,10 @@ The program will process the selected file and display progress in real-time.
 2. **ChaCha20** (Stream Cipher)
    - 256-bit key
    - Modern, high-performance cipher
-   - Developed by Daniel J. Bernstein
 
 3. **Reed-Solomon** (Error Correction)
    - Adds redundancy for error recovery
    - Helps protect against data corruption
-   - Configurable data/parity ratio
 
 ### Additional Security Measures
 
