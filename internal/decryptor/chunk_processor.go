@@ -33,7 +33,6 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 		return nil, fmt.Errorf("encryption key must be at least 64 bytes long")
 	}
 
-	// serpentCipher, err := algorithms.NewSerpentCipher(key[:32])
 	aesCipher, err := algorithms.NewAESCipher(key[:32])
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Serpent cipher: %w", err)

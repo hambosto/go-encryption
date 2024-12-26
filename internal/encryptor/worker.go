@@ -151,11 +151,6 @@ func (f *FileEncryptor) processOrderedResults(
 			break
 		}
 
-		// if err := f.writeChunk(w, chunk.data); err != nil {
-		// 	errChan <- fmt.Errorf("failed to write chunk %d: %w", chunk.index, err)
-		// 	return
-		// }
-
 		sizeBuffer := make([]byte, 4)
 		binary.BigEndian.PutUint32(sizeBuffer, uint32(len(chunk.data)))
 		if _, err := w.Write(sizeBuffer); err != nil {
@@ -177,18 +172,3 @@ func (f *FileEncryptor) processOrderedResults(
 		*nextIndex++
 	}
 }
-
-// func (f *FileEncryptor) writeChunk(w io.Writer, chunk []byte) error {
-// 	sizeBuffer := make([]byte, 4)
-// 	binary.BigEndian.PutUint32(sizeBuffer, uint32(len(chunk)))
-
-// 	if _, err := w.Write(sizeBuffer); err != nil {
-// 		return fmt.Errorf("failed to write chunk size: %w", err)
-// 	}
-
-// 	if _, err := w.Write(chunk); err != nil {
-// 		return fmt.Errorf("failed to write chunk data: %w", err)
-// 	}
-
-// 	return nil
-// }
