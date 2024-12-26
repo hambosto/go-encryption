@@ -14,11 +14,13 @@ import (
 
 const (
 	MaxChunkSize          = 1024 * 1024
-	MaxEncryptedChunkSize = ((MaxChunkSize + (MaxChunkSize / 10) + 16 + 4 + (4 - 1)) / 4) * (4 + 10)
+	EncryptionOverhead    = (MaxChunkSize / 10) + 16 + 4
+	Padding               = 4 - 1
+	MaxEncryptedChunkSize = ((MaxChunkSize + EncryptionOverhead + Padding) / 4) * (4 + 10)
 )
 
 type ChunkProcessor struct {
-	serpentCipher  *algorithms.SerpentCipher
+	aesCipher      *algorithms.AESCipher
 	chaCha20Cipher *algorithms.ChaCha20Cipher
 	rsEncoder      *encoding.ReedSolomonEncoder
 	bufferPool     sync.Pool
@@ -30,7 +32,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 		return nil, fmt.Errorf("encryption key must be at least 64 bytes long")
 	}
 
-	serpentCipher, err := algorithms.NewSerpentCipher(key[:32])
+	aesCipher, err := algorithms.NewAESCipher(key[:32])
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Serpent cipher: %w", err)
 	}
@@ -46,7 +48,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 	}
 
 	return &ChunkProcessor{
-		serpentCipher:  serpentCipher,
+		aesCipher:      aesCipher,
 		chaCha20Cipher: chaCha20Cipher,
 		rsEncoder:      rsEncoder,
 		bufferPool: sync.Pool{
@@ -71,7 +73,7 @@ func (cp *ChunkProcessor) ProcessChunk(chunk []byte) ([]byte, error) {
 
 	paddedData := cp.padData(compressedData)
 
-	serpentEncrypted, err := cp.serpentCipher.Encrypt(paddedData)
+	serpentEncrypted, err := cp.aesCipher.Encrypt(paddedData)
 	if err != nil {
 		return nil, fmt.Errorf("Serpent encryption failed: %w", err)
 	}

@@ -159,9 +159,8 @@ func (f *FileDecryptor) processOrderedResults(
 			break
 		}
 
-		if err := f.writeChunk(w, chunk.data); err != nil {
+		if _, err := w.Write(chunk.data); err != nil {
 			errChan <- fmt.Errorf("failed to write chunk %d: %w", chunk.index, err)
-			return
 		}
 
 		if err := f.bar.Add(chunk.size); err != nil {
@@ -172,11 +171,4 @@ func (f *FileDecryptor) processOrderedResults(
 		delete(pendingResults, *nextIndex)
 		*nextIndex++
 	}
-}
-
-func (f *FileDecryptor) writeChunk(w io.Writer, chunk []byte) error {
-	if _, err := w.Write(chunk); err != nil {
-		return fmt.Errorf("failed to write chunk data: %w", err)
-	}
-	return nil
 }

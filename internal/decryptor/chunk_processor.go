@@ -15,11 +15,13 @@ import (
 
 const (
 	MaxChunkSize          = 1024 * 1024
-	MaxEncryptedChunkSize = ((MaxChunkSize + (MaxChunkSize / 10) + 16 + 4 + (4 - 1)) / 4) * (4 + 10)
+	EncryptionOverhead    = (MaxChunkSize / 10) + 16 + 4
+	Padding               = 4 - 1
+	MaxEncryptedChunkSize = ((MaxChunkSize + EncryptionOverhead + Padding) / 4) * (4 + 10)
 )
 
 type ChunkProcessor struct {
-	serpentCipher  *algorithms.SerpentCipher
+	aesCipher      *algorithms.AESCipher
 	chaCha20Cipher *algorithms.ChaCha20Cipher
 	rsDecoder      *encoding.ReedSolomonEncoder
 	bufferPool     sync.Pool
@@ -31,7 +33,8 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 		return nil, fmt.Errorf("encryption key must be at least 64 bytes long")
 	}
 
-	serpentCipher, err := algorithms.NewSerpentCipher(key[:32])
+	// serpentCipher, err := algorithms.NewSerpentCipher(key[:32])
+	aesCipher, err := algorithms.NewAESCipher(key[:32])
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Serpent cipher: %w", err)
 	}
@@ -47,7 +50,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 	}
 
 	return &ChunkProcessor{
-		serpentCipher:  serpentCipher,
+		aesCipher:      aesCipher,
 		chaCha20Cipher: chaCha20Cipher,
 		rsDecoder:      rsDecoder,
 		bufferPool: sync.Pool{
@@ -75,7 +78,7 @@ func (cp *ChunkProcessor) ProcessChunk(chunk []byte) ([]byte, error) {
 		return nil, fmt.Errorf("ChaCha20 decryption failed: %w", err)
 	}
 
-	serpentDecrypted, err := cp.serpentCipher.Decrypt(chaCha20Decrypted)
+	serpentDecrypted, err := cp.aesCipher.Decrypt(chaCha20Decrypted)
 	if err != nil {
 		return nil, fmt.Errorf("Serpent decryption failed: %w", err)
 	}

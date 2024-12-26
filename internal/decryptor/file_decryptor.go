@@ -31,7 +31,7 @@ func NewFileDecryptor(key []byte) (*FileDecryptor, error) {
 }
 
 func (f *FileDecryptor) SetNonce(serpentNonce, chacha20Nonce []byte) error {
-	if err := f.chunkProcessor.serpentCipher.SetNonce(serpentNonce); err != nil {
+	if err := f.chunkProcessor.aesCipher.SetNonce(serpentNonce); err != nil {
 		return fmt.Errorf("failed to set serpent nonce: %w", err)
 	}
 

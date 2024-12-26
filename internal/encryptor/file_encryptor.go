@@ -31,5 +31,5 @@ func NewFileEncryptor(key []byte) (*FileEncryptor, error) {
 }
 
 func (f *FileEncryptor) GetNonce() ([]byte, []byte) {
-	return f.chunkProcessor.serpentCipher.GetNonce(), f.chunkProcessor.chaCha20Cipher.GetNonce()
+	return f.chunkProcessor.aesCipher.GetNonce(), f.chunkProcessor.chaCha20Cipher.GetNonce()
 }
