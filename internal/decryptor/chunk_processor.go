@@ -23,7 +23,7 @@ const (
 type ChunkProcessor struct {
 	aesCipher      *algorithms.AESCipher
 	chaCha20Cipher *algorithms.ChaCha20Cipher
-	rsDecoder      *encoding.ReedSolomonEncoder
+	encoder        *encoding.Encoder
 	bufferPool     sync.Pool
 	decompressPool sync.Pool
 }
@@ -43,7 +43,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 		return nil, fmt.Errorf("failed to create ChaCha20 cipher: %w", err)
 	}
 
-	rsDecoder, err := encoding.NewReedSolomonEncoder(config.DataShards, config.ParityShards)
+	encoder, err := encoding.New(config.DataShards, config.ParityShards)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Reed-Solomon encoder: %w", err)
 	}
@@ -51,7 +51,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 	return &ChunkProcessor{
 		aesCipher:      aesCipher,
 		chaCha20Cipher: chaCha20Cipher,
-		rsDecoder:      rsDecoder,
+		encoder:        encoder,
 		bufferPool: sync.Pool{
 			New: func() interface{} {
 				buffer := make([]byte, MaxEncryptedChunkSize)
@@ -67,7 +67,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 }
 
 func (cp *ChunkProcessor) ProcessChunk(chunk []byte) ([]byte, error) {
-	decodedData, err := cp.rsDecoder.Decode(chunk)
+	decodedData, err := cp.encoder.Decode(chunk)
 	if err != nil {
 		return nil, fmt.Errorf("reed-solomon decoding failed: %w", err)
 	}
