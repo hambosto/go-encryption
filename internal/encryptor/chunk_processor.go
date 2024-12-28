@@ -34,7 +34,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 
 	aesCipher, err := algorithms.NewAESCipher(key[:32])
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Serpent cipher: %w", err)
+		return nil, fmt.Errorf("failed to create aes cipher: %w", err)
 	}
 
 	chaCha20Cipher, err := algorithms.NewChaCha20Cipher(key[32:64])
@@ -73,12 +73,12 @@ func (cp *ChunkProcessor) ProcessChunk(chunk []byte) ([]byte, error) {
 
 	paddedData := cp.padData(compressedData)
 
-	serpentEncrypted, err := cp.aesCipher.Encrypt(paddedData)
+	aesEncrypted, err := cp.aesCipher.Encrypt(paddedData)
 	if err != nil {
-		return nil, fmt.Errorf("Serpent encryption failed: %w", err)
+		return nil, fmt.Errorf("aes encryption failed: %w", err)
 	}
 
-	chaCha20Encrypted, err := cp.chaCha20Cipher.Encrypt(serpentEncrypted)
+	chaCha20Encrypted, err := cp.chaCha20Cipher.Encrypt(aesEncrypted)
 	if err != nil {
 		return nil, fmt.Errorf("ChaCha20 encryption failed: %w", err)
 	}

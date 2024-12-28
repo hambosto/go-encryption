@@ -11,7 +11,7 @@ import (
 func Read(r io.Reader) (FileHeader, error) {
 	header := FileHeader{
 		Salt:          make([]byte, config.SaltSize),
-		SerpentNonce:  make([]byte, config.NonceSize),
+		AesNonce:      make([]byte, config.NonceSize),
 		ChaCha20Nonce: make([]byte, config.NonceSizeX),
 	}
 
@@ -25,8 +25,8 @@ func Read(r io.Reader) (FileHeader, error) {
 	}
 	header.OriginalSize = binary.BigEndian.Uint64(sizeBytes)
 
-	if _, err := io.ReadFull(r, header.SerpentNonce); err != nil {
-		return header, fmt.Errorf("failed to read serpent nonce: %w", err)
+	if _, err := io.ReadFull(r, header.AesNonce); err != nil {
+		return header, fmt.Errorf("failed to read aes nonce: %w", err)
 	}
 
 	if _, err := io.ReadFull(r, header.ChaCha20Nonce); err != nil {

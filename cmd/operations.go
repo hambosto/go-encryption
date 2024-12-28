@@ -75,12 +75,12 @@ func performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, ke
 		return fmt.Errorf("failed to create encryptor: %w", err)
 	}
 
-	serpentNonce, chaCha20Nonce := encrypt.GetNonce()
+	aesNonce, chaCha20Nonce := encrypt.GetNonce()
 
 	fileHeader := header.FileHeader{
 		Salt:          salt,
 		OriginalSize:  uint64(fileInfo.Size()),
-		SerpentNonce:  serpentNonce,
+		AesNonce:      aesNonce,
 		ChaCha20Nonce: chaCha20Nonce,
 	}
 
@@ -101,7 +101,7 @@ func performDecryption(input *os.File, output *os.File, key []byte, fileHeader h
 		return fmt.Errorf("failed to create decryptor: %w", err)
 	}
 
-	if err = decrypt.SetNonce(fileHeader.SerpentNonce, fileHeader.ChaCha20Nonce); err != nil {
+	if err = decrypt.SetNonce(fileHeader.AesNonce, fileHeader.ChaCha20Nonce); err != nil {
 		return fmt.Errorf("failed to set nonce: %w", err)
 	}
 

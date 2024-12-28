@@ -17,8 +17,8 @@ func Write(w io.Writer, header FileHeader) error {
 		return fmt.Errorf("failed to write original size: %w", err)
 	}
 
-	if _, err := w.Write(header.SerpentNonce); err != nil {
-		return fmt.Errorf("failed to write serpent nonce: %w", err)
+	if _, err := w.Write(header.AesNonce); err != nil {
+		return fmt.Errorf("failed to write aes nonce: %w", err)
 	}
 
 	if _, err := w.Write(header.ChaCha20Nonce); err != nil {

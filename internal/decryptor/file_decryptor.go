@@ -30,9 +30,9 @@ func NewFileDecryptor(key []byte) (*FileDecryptor, error) {
 	}, nil
 }
 
-func (f *FileDecryptor) SetNonce(serpentNonce, chacha20Nonce []byte) error {
-	if err := f.chunkProcessor.aesCipher.SetNonce(serpentNonce); err != nil {
-		return fmt.Errorf("failed to set serpent nonce: %w", err)
+func (f *FileDecryptor) SetNonce(aesNonce, chacha20Nonce []byte) error {
+	if err := f.chunkProcessor.aesCipher.SetNonce(aesNonce); err != nil {
+		return fmt.Errorf("failed to set aes nonce: %w", err)
 	}
 
 	if err := f.chunkProcessor.chaCha20Cipher.SetNonce(chacha20Nonce); err != nil {
