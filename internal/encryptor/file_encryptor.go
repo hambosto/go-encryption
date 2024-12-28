@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/hambosto/go-encryption/internal/config"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -15,8 +14,8 @@ type FileEncryptor struct {
 }
 
 func NewFileEncryptor(key []byte) (*FileEncryptor, error) {
-	if len(key) != config.KeySize {
-		return nil, fmt.Errorf("invalid key size: must be %d bytes", config.KeySize)
+	if len(key) != 64 {
+		return nil, fmt.Errorf("invalid key size: must be %d bytes", 64)
 	}
 
 	chunkProcessor, err := NewChunkProcessor(key)

@@ -4,15 +4,13 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-
-	"github.com/hambosto/go-encryption/internal/config"
 )
 
 func Read(r io.Reader) (FileHeader, error) {
 	header := FileHeader{
-		Salt:          make([]byte, config.SaltSize),
-		AesNonce:      make([]byte, config.NonceSize),
-		ChaCha20Nonce: make([]byte, config.NonceSizeX),
+		Salt:          make([]byte, 32),
+		AesNonce:      make([]byte, 12),
+		ChaCha20Nonce: make([]byte, 24),
 	}
 
 	if _, err := io.ReadFull(r, header.Salt); err != nil {

@@ -1,7 +1,6 @@
 package kdf
 
 import (
-	"github.com/hambosto/go-encryption/internal/config"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -20,7 +19,7 @@ func Derive(password []byte, salt []byte) ([]byte, error) {
 		argonTimeCost,
 		argonMemory,
 		argonThreads,
-		config.KeySize,
+		64,
 	)
 
 	return key, nil

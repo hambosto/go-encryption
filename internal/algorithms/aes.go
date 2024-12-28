@@ -5,8 +5,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
-
-	"github.com/hambosto/go-encryption/internal/config"
 )
 
 type AESCipher struct {
@@ -15,7 +13,7 @@ type AESCipher struct {
 }
 
 func NewAESCipher(key []byte) (*AESCipher, error) {
-	nonce := make([]byte, config.NonceSize)
+	nonce := make([]byte, 12)
 	if _, err := rand.Read(nonce); err != nil {
 		return nil, fmt.Errorf("failed to generate nonce: %w", err)
 	}
@@ -55,7 +53,7 @@ func (c *AESCipher) Decrypt(ciphertext []byte) ([]byte, error) {
 }
 
 func (c *AESCipher) SetNonce(nonce []byte) error {
-	if len(nonce) != config.NonceSize {
+	if len(nonce) != 12 {
 		return fmt.Errorf("invalid nonce size: %d bytes", len(nonce))
 	}
 

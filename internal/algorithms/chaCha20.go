@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hambosto/go-encryption/internal/config"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
@@ -19,7 +18,7 @@ func NewChaCha20Cipher(key []byte) (*ChaCha20Cipher, error) {
 		return nil, fmt.Errorf("invalid key size: %d bytes, expected %d bytes", len(key), chacha20poly1305.KeySize)
 	}
 
-	nonce := make([]byte, config.NonceSizeX)
+	nonce := make([]byte, 24)
 	if _, err := rand.Read(nonce); err != nil {
 		return nil, fmt.Errorf("failed to generate random nonce: %w", err)
 	}
@@ -61,8 +60,8 @@ func (c *ChaCha20Cipher) Decrypt(ciphertext []byte) ([]byte, error) {
 }
 
 func (c *ChaCha20Cipher) SetNonce(nonce []byte) error {
-	if len(nonce) != config.NonceSizeX {
-		return fmt.Errorf("invalid nonce size: %d bytes, expected %d bytes", len(nonce), config.NonceSizeX)
+	if len(nonce) != 24 {
+		return fmt.Errorf("invalid nonce size: %d bytes, expected %d bytes", len(nonce), 24)
 	}
 	c.nonce = nonce
 	return nil

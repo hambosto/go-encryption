@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/hambosto/go-encryption/internal/algorithms"
-	"github.com/hambosto/go-encryption/internal/config"
 	"github.com/hambosto/go-encryption/internal/encoding"
 )
 
@@ -39,7 +38,7 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 		return nil, fmt.Errorf("failed to create ChaCha20 cipher: %w", err)
 	}
 
-	encoder, err := encoding.New(config.DataShards, config.ParityShards)
+	encoder, err := encoding.New(4, 10)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Reed-Solomon encoder: %w", err)
 	}

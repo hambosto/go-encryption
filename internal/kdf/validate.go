@@ -2,8 +2,6 @@ package kdf
 
 import (
 	"fmt"
-
-	"github.com/hambosto/go-encryption/internal/config"
 )
 
 func validatePassword(password []byte) error {
@@ -14,8 +12,8 @@ func validatePassword(password []byte) error {
 }
 
 func validateSalt(salt []byte) error {
-	if len(salt) != config.SaltSize {
-		return fmt.Errorf("salt must be %d bytes", config.SaltSize)
+	if len(salt) != 32 {
+		return fmt.Errorf("salt must be %d bytes", 32)
 	}
 	return nil
 }
