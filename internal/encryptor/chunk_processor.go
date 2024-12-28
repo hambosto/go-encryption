@@ -13,10 +13,7 @@ import (
 )
 
 const (
-	MaxChunkSize          = 1024 * 1024
-	EncryptionOverhead    = (MaxChunkSize / 10) + 16 + 4
-	Padding               = 4 - 1
-	MaxEncryptedChunkSize = ((MaxChunkSize + EncryptionOverhead + Padding) / 4) * (4 + 10)
+	MaxChunkSize = 1024 * 1024
 )
 
 type ChunkProcessor struct {
