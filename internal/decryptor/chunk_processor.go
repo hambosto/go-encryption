@@ -24,7 +24,6 @@ type ChunkProcessor struct {
 	chaCha20Cipher *algorithms.ChaCha20Cipher
 	encoder        *encoding.Encoder
 	bufferPool     sync.Pool
-	decompressPool sync.Pool
 }
 
 func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
@@ -57,11 +56,6 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 				return &buffer
 			},
 		},
-		decompressPool: sync.Pool{
-			New: func() interface{} {
-				return &bytes.Buffer{}
-			},
-		},
 	}, nil
 }
 
@@ -86,19 +80,16 @@ func (cp *ChunkProcessor) ProcessChunk(chunk []byte) ([]byte, error) {
 
 func (cp *ChunkProcessor) DecompressData(data []byte) ([]byte, error) {
 	if len(data) < 4 {
-		return nil, fmt.Errorf("invalid data: insufficient bytes for size information")
+		return nil, fmt.Errorf("invalid data: insufficient bytes for size information or invalid padding")
 	}
 
-	compressedSize := binary.BigEndian.Uint32(data[:4])
+	compressedSize := binary.BigEndian.Uint32(data)
 	if compressedSize > uint32(len(data)-4) {
 		return nil, fmt.Errorf("invalid compressed data size: expected %d, got %d", compressedSize, len(data)-4)
 	}
 
 	compressedData := data[4 : 4+compressedSize]
-
-	buffer := cp.decompressPool.Get().(*bytes.Buffer)
-	buffer.Reset()
-	defer cp.decompressPool.Put(buffer)
+	var buffer bytes.Buffer
 
 	zr, err := zlib.NewReader(bytes.NewReader(compressedData))
 	if err != nil {
@@ -106,12 +97,9 @@ func (cp *ChunkProcessor) DecompressData(data []byte) ([]byte, error) {
 	}
 	defer zr.Close()
 
-	if _, err := io.Copy(buffer, zr); err != nil {
+	if _, err := io.Copy(&buffer, zr); err != nil {
 		return nil, fmt.Errorf("decompression failed: %w", err)
 	}
 
-	result := make([]byte, buffer.Len())
-	copy(result, buffer.Bytes())
-
-	return result, nil
+	return buffer.Bytes(), nil
 }
