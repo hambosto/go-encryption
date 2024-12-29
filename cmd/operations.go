@@ -5,10 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/hambosto/go-encryption/internal/decryptor"
-	"github.com/hambosto/go-encryption/internal/encryptor"
 	"github.com/hambosto/go-encryption/internal/header"
 	"github.com/hambosto/go-encryption/internal/kdf"
+	"github.com/hambosto/go-encryption/internal/operations"
 	"github.com/hambosto/go-encryption/internal/utils"
 )
 
@@ -70,12 +69,13 @@ func deriveEncryptionKey(password string) ([]byte, []byte, error) {
 }
 
 func performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, key []byte, salt []byte) error {
-	encrypt, err := encryptor.NewFileEncryptor(key)
+	// encrypt, err := encryptor.NewFileEncryptor(key)
+	operations, err := operations.NewFileProcessor(key, true)
 	if err != nil {
 		return fmt.Errorf("failed to create encryptor: %w", err)
 	}
 
-	aesNonce, chaCha20Nonce := encrypt.GetNonce()
+	aesNonce, chaCha20Nonce := operations.GetNonce()
 
 	fileHeader := header.FileHeader{
 		Salt:          salt,
@@ -88,7 +88,7 @@ func performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, ke
 		return fmt.Errorf("failed to write file header: %w", err)
 	}
 
-	if err = encrypt.Encrypt(input, output, fileInfo.Size()); err != nil {
+	if err = operations.Process(input, output, fileInfo.Size()); err != nil {
 		return fmt.Errorf("failed to encrypt file: %w", err)
 	}
 
@@ -96,16 +96,17 @@ func performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, ke
 }
 
 func performDecryption(input *os.File, output *os.File, key []byte, fileHeader header.FileHeader) error {
-	decrypt, err := decryptor.NewFileDecryptor(key)
+	// decrypt, err := decryptor.NewFileDecryptor(key)
+	operations, err := operations.NewFileProcessor(key, false)
 	if err != nil {
 		return fmt.Errorf("failed to create decryptor: %w", err)
 	}
 
-	if err = decrypt.SetNonce(fileHeader.AesNonce, fileHeader.ChaCha20Nonce); err != nil {
+	if err = operations.SetNonce(fileHeader.AesNonce, fileHeader.ChaCha20Nonce); err != nil {
 		return fmt.Errorf("failed to set nonce: %w", err)
 	}
 
-	if err = decrypt.Decrypt(input, output, int64(fileHeader.OriginalSize)); err != nil {
+	if err = operations.Process(input, output, int64(fileHeader.OriginalSize)); err != nil {
 		return fmt.Errorf("failed to decrypt file: %w", err)
 	}
 
