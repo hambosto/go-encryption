@@ -6,30 +6,38 @@ import (
 	"io"
 )
 
-func Read(r io.Reader) (FileHeader, error) {
-	header := FileHeader{
-		Salt:          make([]byte, 32),
-		AesNonce:      make([]byte, 12),
-		ChaCha20Nonce: make([]byte, 24),
-	}
+type BinaryHeaderReader struct{}
 
-	if _, err := io.ReadFull(r, header.Salt); err != nil {
-		return header, fmt.Errorf("failed to read salt: %w", err)
+func NewBinaryHeaderReader() *BinaryHeaderReader {
+	return &BinaryHeaderReader{}
+}
+
+func (r *BinaryHeaderReader) Read(reader io.Reader) (FileHeader, error) {
+	builder := NewFileHeaderBuilder()
+
+	salt := make([]byte, 32)
+	if _, err := io.ReadFull(reader, salt); err != nil {
+		return FileHeader{}, fmt.Errorf("failed to read salt: %w", err)
 	}
+	builder.SetSalt(salt)
 
 	sizeBytes := make([]byte, 8)
-	if _, err := io.ReadFull(r, sizeBytes); err != nil {
-		return header, fmt.Errorf("failed to read original size: %w", err)
+	if _, err := io.ReadFull(reader, sizeBytes); err != nil {
+		return FileHeader{}, fmt.Errorf("failed to read original size: %w", err)
 	}
-	header.OriginalSize = binary.BigEndian.Uint64(sizeBytes)
+	builder.SetOriginalSize(binary.BigEndian.Uint64(sizeBytes))
 
-	if _, err := io.ReadFull(r, header.AesNonce); err != nil {
-		return header, fmt.Errorf("failed to read aes nonce: %w", err)
+	aesNonce := make([]byte, 12)
+	if _, err := io.ReadFull(reader, aesNonce); err != nil {
+		return FileHeader{}, fmt.Errorf("failed to read aes nonce: %w", err)
 	}
+	builder.SetAesNonce(aesNonce)
 
-	if _, err := io.ReadFull(r, header.ChaCha20Nonce); err != nil {
-		return header, fmt.Errorf("failed to read chacha20 nonce: %w", err)
+	chaCha20Nonce := make([]byte, 24)
+	if _, err := io.ReadFull(reader, chaCha20Nonce); err != nil {
+		return FileHeader{}, fmt.Errorf("failed to read chacha20 nonce: %w", err)
 	}
+	builder.SetChaCha20Nonce(chaCha20Nonce)
 
-	return header, nil
+	return builder.Build(), nil
 }

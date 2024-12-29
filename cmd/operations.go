@@ -69,7 +69,6 @@ func deriveEncryptionKey(password string) ([]byte, []byte, error) {
 }
 
 func performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, key []byte, salt []byte) error {
-	// encrypt, err := encryptor.NewFileEncryptor(key)
 	operations, err := operations.NewFileProcessor(key, true)
 	if err != nil {
 		return fmt.Errorf("failed to create encryptor: %w", err)
@@ -77,14 +76,15 @@ func performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, ke
 
 	aesNonce, chaCha20Nonce := operations.GetNonce()
 
-	fileHeader := header.FileHeader{
-		Salt:          salt,
-		OriginalSize:  uint64(fileInfo.Size()),
-		AesNonce:      aesNonce,
-		ChaCha20Nonce: chaCha20Nonce,
-	}
+	builder := header.NewFileHeaderBuilder().
+		SetSalt(salt).
+		SetOriginalSize(uint64(fileInfo.Size())).
+		SetAesNonce(aesNonce).
+		SetChaCha20Nonce(chaCha20Nonce).
+		Build()
 
-	if err = header.Write(output, fileHeader); err != nil {
+	writer := header.NewBinaryHeaderWriter()
+	if err = writer.Write(output, builder); err != nil {
 		return fmt.Errorf("failed to write file header: %w", err)
 	}
 
@@ -96,7 +96,6 @@ func performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, ke
 }
 
 func performDecryption(input *os.File, output *os.File, key []byte, fileHeader header.FileHeader) error {
-	// decrypt, err := decryptor.NewFileDecryptor(key)
 	operations, err := operations.NewFileProcessor(key, false)
 	if err != nil {
 		return fmt.Errorf("failed to create decryptor: %w", err)
@@ -215,7 +214,8 @@ func RunDecryption(inputFile string) error {
 	}
 	defer input.Close()
 
-	fileHeader, err := header.Read(input)
+	reader := header.NewBinaryHeaderReader()
+	fileHeader, err := reader.Read(input)
 	if err != nil {
 		return fmt.Errorf("failed to read file header: %w", err)
 	}
