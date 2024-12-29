@@ -111,16 +111,10 @@ func (f *FileDecryptor) decryptWorker(
 	defer wg.Done()
 	for job := range jobs {
 		processed, err := f.chunkProcessor.ProcessChunk(job.data)
-		if err != nil {
-			results <- ChunkResult{index: job.index, err: err}
-			continue
-		}
-
-		decompressed, err := f.chunkProcessor.DecompressData(processed)
 		results <- ChunkResult{
 			index: job.index,
-			data:  decompressed,
-			size:  len(decompressed),
+			data:  processed,
+			size:  len(processed),
 			err:   err,
 		}
 	}

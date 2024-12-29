@@ -60,7 +60,12 @@ func (cp *ChunkProcessor) ProcessChunk(chunk []byte) ([]byte, error) {
 		return nil, fmt.Errorf("aes decryption failed: %w", err)
 	}
 
-	return aesDecrypted, nil
+	zlibDecompressed, err := cp.DecompressData(aesDecrypted)
+	if err != nil {
+		return nil, fmt.Errorf("zlib decompression failed: %w", err)
+	}
+
+	return zlibDecompressed, nil
 }
 
 func (cp *ChunkProcessor) DecompressData(data []byte) ([]byte, error) {
