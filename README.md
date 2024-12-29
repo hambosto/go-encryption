@@ -8,7 +8,7 @@ A secure and efficient file encryption tool written in Go that implements multi-
 ## Features
 
 - **Multi-layer Encryption**: Combines multiple encryption algorithms for enhanced security
-  - Serpent block cipher
+  - AES-GCM (Authenticated Encryption with Associated Data)
   - ChaCha20 stream cipher
   - Reed-Solomon error correction encoding
 - **Data Compression**: Utilizes zlib compression for efficient storage
@@ -78,10 +78,10 @@ The program will process the selected file and display progress in real-time.
 
 ### Encryption Layers
 
-1. **Serpent** (Block Cipher)
+1. **AES-GCM** (Authenticated Encryption with Associated Data)
    - 256-bit key
-   - Considered a highly secure AES finalist
-   - Block size: 128 bits
+   - Provides confidentiality, integrity, and authenticity
+   - Galois/Counter Mode (GCM) ensures secure and efficient encryption
 
 2. **ChaCha20** (Stream Cipher)
    - 256-bit key
@@ -146,3 +146,4 @@ While this tool implements strong encryption algorithms, please note:
 - Back up important files before encryption
 - Use strong, unique keys for each file
 - Store nonces securely for decryption
+
