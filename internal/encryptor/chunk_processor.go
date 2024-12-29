@@ -84,7 +84,7 @@ func (cp *ChunkProcessor) ProcessChunk(chunk []byte) ([]byte, error) {
 func (cp *ChunkProcessor) compressData(data []byte) ([]byte, error) {
 	var buffer bytes.Buffer
 
-	zw, err := zlib.NewWriterLevel(&buffer, zlib.BestSpeed)
+	zw, err := zlib.NewWriterLevel(&buffer, zlib.BestCompression)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create zlib writer: %w", err)
 	}
