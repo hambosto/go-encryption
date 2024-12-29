@@ -9,214 +9,237 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-type Jobs struct {
-	chunk []byte
-	index uint32
+type Job struct {
+	Data  []byte
+	Index uint32
 }
 
-type Results struct {
-	index uint32
-	data  []byte
-	size  int
-	err   error
+type Result struct {
+	Index uint32
+	Data  []byte
+	Size  int
+	Error error
 }
 
 func (f *FileProcessor) Process(r io.Reader, w io.Writer, size int64) error {
+	if err := f.validateInputs(r, w); err != nil {
+		return err
+	}
+
+	f.initializeProgressBar(size)
+	return f.executePipeline(r, w)
+}
+
+func (f *FileProcessor) validateInputs(r io.Reader, w io.Writer) error {
 	if r == nil || w == nil {
 		return fmt.Errorf("reader and writer must be non-nil")
 	}
+	return nil
+}
 
+func (f *FileProcessor) initializeProgressBar(size int64) {
 	action := "Encrypting..."
 	if !f.chunkProcessor.isEncryption {
 		action = "Decrypting..."
 	}
-
 	f.bar = progressbar.DefaultBytes(size, action)
-
-	jobs := make(chan Jobs, f.workers)
-	results := make(chan Results, f.workers)
-	errChan := make(chan error, 1)
-
-	return f.runProcessingPipeline(r, w, jobs, results, errChan)
 }
 
-func (f *FileProcessor) runProcessingPipeline(
-	r io.Reader,
-	w io.Writer,
-	jobs chan Jobs,
-	results chan Results,
-	errChan chan error,
-) error {
-	var worker sync.WaitGroup
-	var writer sync.WaitGroup
+func (f *FileProcessor) executePipeline(r io.Reader, w io.Writer) error {
+	jobs := make(chan Job, f.workers)
+	results := make(chan Result, f.workers)
+	errChan := make(chan error, 1)
 
-	for i := 0; i < f.workers; i++ {
-		worker.Add(1)
-		go f.worker(jobs, results, &worker)
-	}
+	var (
+		workerGroup sync.WaitGroup
+		writerGroup sync.WaitGroup
+	)
 
-	writer.Add(1)
-	go f.resultCollector(w, results, &writer, errChan)
+	f.startWorkers(&workerGroup, jobs, results)
+
+	writerGroup.Add(1)
+	go f.collectResults(w, results, &writerGroup, errChan)
 
 	if err := f.distributeJobs(r, jobs, errChan); err != nil {
-		return err
+		return fmt.Errorf("job distribution failed: %w", err)
 	}
 
+	return f.waitForCompletion(jobs, results, &workerGroup, &writerGroup, errChan)
+}
+
+func (f *FileProcessor) startWorkers(wg *sync.WaitGroup, jobs <-chan Job, results chan<- Result) {
+	for i := 0; i < f.workers; i++ {
+		wg.Add(1)
+		go f.processJobs(jobs, results, wg)
+	}
+}
+
+func (f *FileProcessor) processJobs(jobs <-chan Job, results chan<- Result, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for job := range jobs {
+		processed, err := f.chunkProcessor.ProcessChunk(job.Data)
+		size := len(processed)
+		if f.chunkProcessor.isEncryption {
+			size = len(job.Data)
+		}
+
+		results <- Result{
+			Index: job.Index,
+			Data:  processed,
+			Size:  size,
+			Error: err,
+		}
+	}
+}
+
+func (f *FileProcessor) distributeJobs(r io.Reader, jobs chan<- Job, errChan chan error) error {
+	if f.chunkProcessor.isEncryption {
+		return f.distributeEncryptionJobs(r, jobs, errChan)
+	}
+	return f.distributeDecryptionJobs(r, jobs, errChan)
+}
+
+func (f *FileProcessor) distributeEncryptionJobs(r io.Reader, jobs chan<- Job, errChan chan error) error {
+	buffer := make([]byte, MaxChunkSize)
+	var chunkIndex uint32
+
+	for {
+		n, err := r.Read(buffer)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read chunk: %w", err)
+		}
+
+		chunk := make([]byte, n)
+		copy(chunk, buffer[:n])
+
+		if err := f.sendJob(jobs, Job{Data: chunk, Index: chunkIndex}, errChan); err != nil {
+			return err
+		}
+		chunkIndex++
+	}
+	return nil
+}
+
+func (f *FileProcessor) distributeDecryptionJobs(r io.Reader, jobs chan<- Job, errChan chan error) error {
+	var chunkIndex uint32
+	sizeBuffer := make([]byte, 4)
+
+	for {
+		if _, err := io.ReadFull(r, sizeBuffer); err == io.EOF {
+			break
+		} else if err != nil {
+			return fmt.Errorf("failed to read chunk size: %w", err)
+		}
+
+		chunkSize := binary.BigEndian.Uint32(sizeBuffer)
+		chunk := make([]byte, chunkSize)
+
+		if _, err := io.ReadFull(r, chunk); err != nil {
+			return fmt.Errorf("failed to read chunk data: %w", err)
+		}
+
+		if err := f.sendJob(jobs, Job{Data: chunk, Index: chunkIndex}, errChan); err != nil {
+			return err
+		}
+		chunkIndex++
+	}
+	return nil
+}
+
+func (f *FileProcessor) sendJob(jobs chan<- Job, job Job, errChan chan error) error {
+	select {
+	case jobs <- job:
+		return nil
+	case err := <-errChan:
+		return fmt.Errorf("failed to enqueue chunk: %w", err)
+	}
+}
+
+func (f *FileProcessor) collectResults(w io.Writer, results <-chan Result, wg *sync.WaitGroup, errChan chan<- error) {
+	defer wg.Done()
+
+	pendingResults := make(map[uint32]Result)
+	var nextIndex uint32
+
+	for result := range results {
+		if result.Error != nil {
+			errChan <- fmt.Errorf("chunk %d processing failed: %w", result.Index, result.Error)
+			return
+		}
+
+		pendingResults[result.Index] = result
+		if err := f.writeOrderedResults(w, pendingResults, &nextIndex); err != nil {
+			errChan <- err
+			return
+		}
+	}
+}
+
+func (f *FileProcessor) writeOrderedResults(w io.Writer, pendingResults map[uint32]Result, nextIndex *uint32) error {
+	for {
+		result, exists := pendingResults[*nextIndex]
+		if !exists {
+			break
+		}
+
+		if err := f.writeResult(w, result); err != nil {
+			return err
+		}
+
+		delete(pendingResults, *nextIndex)
+		*nextIndex++
+	}
+	return nil
+}
+
+func (f *FileProcessor) writeResult(w io.Writer, result Result) error {
+	if f.chunkProcessor.isEncryption {
+		if err := f.writeChunkSize(w, len(result.Data)); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.Write(result.Data); err != nil {
+		return fmt.Errorf("failed to write chunk data: %w", err)
+	}
+
+	if err := f.bar.Add(result.Size); err != nil {
+		return fmt.Errorf("failed to update progress bar: %w", err)
+	}
+
+	return nil
+}
+
+func (f *FileProcessor) writeChunkSize(w io.Writer, size int) error {
+	sizeBuffer := make([]byte, 4)
+	binary.BigEndian.PutUint32(sizeBuffer, uint32(size))
+
+	if _, err := w.Write(sizeBuffer); err != nil {
+		return fmt.Errorf("failed to write chunk size: %w", err)
+	}
+	return nil
+}
+
+func (f *FileProcessor) waitForCompletion(
+	jobs chan Job,
+	results chan Result,
+	workerGroup *sync.WaitGroup,
+	writerGroup *sync.WaitGroup,
+	errChan chan error,
+) error {
 	close(jobs)
-	worker.Wait()
+	workerGroup.Wait()
 	close(results)
-	writer.Wait()
+	writerGroup.Wait()
 
 	select {
 	case err := <-errChan:
 		return err
 	default:
 		return nil
-	}
-}
-
-func (f *FileProcessor) distributeJobs(
-	r io.Reader,
-	jobs chan<- Jobs,
-	errChan chan error,
-) error {
-	switch f.chunkProcessor.isEncryption {
-	case true:
-		buffer := make([]byte, MaxChunkSize)
-
-		var chunkIndex uint32
-		for {
-			n, err := r.Read(buffer)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return fmt.Errorf("failed to read chunk: %w", err)
-			}
-			chunk := make([]byte, n)
-			copy(chunk, buffer[:n])
-
-			select {
-			case jobs <- Jobs{chunk: chunk, index: chunkIndex}:
-				chunkIndex++
-			case err := <-errChan:
-				return fmt.Errorf("failed to enqueue chunk: %w", err)
-			}
-		}
-	case false:
-		buffer := make([]byte, 4)
-
-		var chunkIndex uint32
-
-		for {
-			_, err := io.ReadFull(r, buffer)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return fmt.Errorf("failed to read chunk size: %w", err)
-			}
-
-			chunkSize := binary.BigEndian.Uint32(buffer)
-			chunk := make([]byte, chunkSize)
-			if _, err := io.ReadFull(r, chunk); err != nil {
-				return fmt.Errorf("failed to read chunk data: %w", err)
-			}
-
-			select {
-			case jobs <- Jobs{chunk: chunk, index: chunkIndex}:
-				chunkIndex++
-			case err := <-errChan:
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (f *FileProcessor) worker(
-	jobs <-chan Jobs,
-	results chan<- Results,
-	wg *sync.WaitGroup,
-) {
-	defer wg.Done()
-	for job := range jobs {
-		processed, err := f.chunkProcessor.ProcessChunk(job.chunk)
-		if f.chunkProcessor.isEncryption {
-			results <- Results{
-				index: job.index,
-				data:  processed,
-				size:  len(job.chunk),
-				err:   err,
-			}
-		} else {
-			results <- Results{
-				index: job.index,
-				data:  processed,
-				size:  len(processed),
-				err:   err,
-			}
-		}
-
-	}
-}
-
-func (f *FileProcessor) resultCollector(
-	w io.Writer,
-	results <-chan Results,
-	wg *sync.WaitGroup,
-	errChan chan<- error,
-) {
-	defer wg.Done()
-	pendingResults := make(map[uint32]Results)
-	nextIndex := uint32(0)
-
-	for result := range results {
-		if result.err != nil {
-			errChan <- fmt.Errorf("failed to process chunk %d: %w", result.index, result.err)
-			return
-		}
-
-		pendingResults[result.index] = result
-		f.processOrderedResults(w, pendingResults, &nextIndex, errChan)
-	}
-}
-
-func (f *FileProcessor) processOrderedResults(
-	w io.Writer,
-	pendingResults map[uint32]Results,
-	nextIndex *uint32,
-	errChan chan<- error,
-) {
-	for {
-		chunk, exists := pendingResults[*nextIndex]
-		if !exists {
-			break
-		}
-
-		if f.chunkProcessor.isEncryption {
-
-			sizeBuffer := make([]byte, 4)
-			binary.BigEndian.PutUint32(sizeBuffer, uint32(len(chunk.data)))
-
-			if _, err := w.Write(sizeBuffer); err != nil {
-				errChan <- fmt.Errorf("failed to write chunk size: %w", err)
-				return
-			}
-		}
-
-		if _, err := w.Write(chunk.data); err != nil {
-			errChan <- fmt.Errorf("failed to write chunk data: %w", err)
-			return
-		}
-
-		if err := f.bar.Add(chunk.size); err != nil {
-			errChan <- fmt.Errorf("failed to update progress bar: %w", err)
-			return
-		}
-
-		delete(pendingResults, *nextIndex)
-		*nextIndex++
 	}
 }
