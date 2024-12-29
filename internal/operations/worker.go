@@ -101,7 +101,7 @@ func (f *FileProcessor) distributeJobs(r io.Reader, jobs chan<- Job, errChan cha
 }
 
 func (f *FileProcessor) distributeEncryptionJobs(r io.Reader, jobs chan<- Job, errChan chan error) error {
-	buffer := make([]byte, MaxChunkSize)
+	buffer := make([]byte, ChunkSize)
 	var chunkIndex uint32
 
 	for {

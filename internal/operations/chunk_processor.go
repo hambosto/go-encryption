@@ -11,7 +11,7 @@ import (
 	"github.com/hambosto/go-encryption/internal/encoding"
 )
 
-const MaxChunkSize = 1024 * 1024
+const ChunkSize = 1024 * 1024
 
 type ChunkProcessor struct {
 	aesCipher      *algorithms.AESCipher
