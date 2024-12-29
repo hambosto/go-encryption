@@ -109,7 +109,7 @@ func (cp *ChunkProcessor) decrypt(chunk []byte) ([]byte, error) {
 func (cp *ChunkProcessor) compressData(data []byte) ([]byte, error) {
 	var buffer bytes.Buffer
 
-	zw, err := zlib.NewWriterLevel(&buffer, zlib.BestCompression)
+	zw, err := zlib.NewWriterLevel(&buffer, zlib.BestSpeed)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create zlib writer: %w", err)
 	}
