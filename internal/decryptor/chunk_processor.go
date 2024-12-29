@@ -6,24 +6,15 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"sync"
 
 	"github.com/hambosto/go-encryption/internal/algorithms"
 	"github.com/hambosto/go-encryption/internal/encoding"
-)
-
-const (
-	MaxChunkSize          = 1024 * 1024
-	EncryptionOverhead    = (MaxChunkSize / 10) + 16 + 4
-	Padding               = 4 - 1
-	MaxEncryptedChunkSize = ((MaxChunkSize + EncryptionOverhead + Padding) / 4) * (4 + 10)
 )
 
 type ChunkProcessor struct {
 	aesCipher      *algorithms.AESCipher
 	chaCha20Cipher *algorithms.ChaCha20Cipher
 	encoder        *encoding.Encoder
-	bufferPool     sync.Pool
 }
 
 func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
@@ -50,12 +41,6 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 		aesCipher:      aesCipher,
 		chaCha20Cipher: chaCha20Cipher,
 		encoder:        encoder,
-		bufferPool: sync.Pool{
-			New: func() interface{} {
-				buffer := make([]byte, MaxEncryptedChunkSize)
-				return &buffer
-			},
-		},
 	}, nil
 }
 

@@ -75,12 +75,11 @@ func (f *FileEncryptor) distributeJobs(
 	jobs chan<- EncryptJob,
 	errChan chan error,
 ) error {
-	buffer := f.chunkProcessor.bufferPool.Get().(*[]byte)
-	defer f.chunkProcessor.bufferPool.Put(buffer)
+	buffer := make([]byte, MaxChunkSize)
 
 	var chunkIndex uint32
 	for {
-		n, err := r.Read(*buffer)
+		n, err := r.Read(buffer)
 		if err == io.EOF {
 			break
 		}
@@ -89,7 +88,7 @@ func (f *FileEncryptor) distributeJobs(
 		}
 
 		chunk := make([]byte, n)
-		copy(chunk, (*buffer)[:n])
+		copy(chunk, buffer[:n])
 
 		select {
 		case jobs <- EncryptJob{chunk: chunk, index: chunkIndex}:
