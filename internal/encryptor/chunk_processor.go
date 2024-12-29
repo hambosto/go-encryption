@@ -20,7 +20,6 @@ type ChunkProcessor struct {
 	chaCha20Cipher *algorithms.ChaCha20Cipher
 	encoder        *encoding.Encoder
 	bufferPool     sync.Pool
-	compressPool   sync.Pool
 }
 
 func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
@@ -53,11 +52,6 @@ func NewChunkProcessor(key []byte) (*ChunkProcessor, error) {
 				return &buffer
 			},
 		},
-		compressPool: sync.Pool{
-			New: func() interface{} {
-				return &bytes.Buffer{}
-			},
-		},
 	}, nil
 }
 
@@ -88,11 +82,9 @@ func (cp *ChunkProcessor) ProcessChunk(chunk []byte) ([]byte, error) {
 }
 
 func (cp *ChunkProcessor) compressData(data []byte) ([]byte, error) {
-	buffer := cp.compressPool.Get().(*bytes.Buffer)
-	buffer.Reset()
-	defer cp.compressPool.Put(buffer)
+	var buffer bytes.Buffer
 
-	zw, err := zlib.NewWriterLevel(buffer, zlib.BestSpeed)
+	zw, err := zlib.NewWriterLevel(&buffer, zlib.BestSpeed)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create zlib writer: %w", err)
 	}
@@ -106,10 +98,7 @@ func (cp *ChunkProcessor) compressData(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to close zlib writer: %w", err)
 	}
 
-	result := make([]byte, buffer.Len())
-	copy(result, buffer.Bytes())
-
-	return result, nil
+	return buffer.Bytes(), nil
 }
 
 func (cp *ChunkProcessor) padData(data []byte) []byte {
