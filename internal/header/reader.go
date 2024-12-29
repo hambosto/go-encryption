@@ -1,43 +1,50 @@
+// internal/header/reader_writer.go
 package header
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io"
 )
 
-type BinaryHeaderReader struct{}
-
-func NewBinaryHeaderReader() *BinaryHeaderReader {
-	return &BinaryHeaderReader{}
+type HeaderReader struct {
+	io HeaderIO
 }
 
-func (r *BinaryHeaderReader) Read(reader io.Reader) (FileHeader, error) {
-	builder := NewFileHeaderBuilder()
+func NewHeaderReader(io HeaderIO) *HeaderReader {
+	return &HeaderReader{io: io}
+}
 
-	salt := make([]byte, 32)
-	if _, err := io.ReadFull(reader, salt); err != nil {
-		return FileHeader{}, fmt.Errorf("failed to read salt: %w", err)
+func (r *HeaderReader) Read(reader io.Reader) (Header, error) {
+	builder := NewHeaderBuilder()
+
+	// Read Salt
+	saltData, err := r.io.ReadComponent(reader, SaltSize)
+	if err != nil {
+		return Header{}, err
 	}
-	builder.SetSalt(salt)
 
-	sizeBytes := make([]byte, 8)
-	if _, err := io.ReadFull(reader, sizeBytes); err != nil {
-		return FileHeader{}, fmt.Errorf("failed to read original size: %w", err)
+	// Read OriginalSize
+	sizeData, err := r.io.ReadComponent(reader, OriginalSizeBytes)
+	if err != nil {
+		return Header{}, err
 	}
-	builder.SetOriginalSize(binary.BigEndian.Uint64(sizeBytes))
 
-	aesNonce := make([]byte, 12)
-	if _, err := io.ReadFull(reader, aesNonce); err != nil {
-		return FileHeader{}, fmt.Errorf("failed to read aes nonce: %w", err)
+	// Read AesNonce
+	aesNonce, err := r.io.ReadComponent(reader, AesNonceSize)
+	if err != nil {
+		return Header{}, err
 	}
-	builder.SetAesNonce(aesNonce)
 
-	chaCha20Nonce := make([]byte, 24)
-	if _, err := io.ReadFull(reader, chaCha20Nonce); err != nil {
-		return FileHeader{}, fmt.Errorf("failed to read chacha20 nonce: %w", err)
+	// Read ChaCha20Nonce
+	chaCha20Nonce, err := r.io.ReadComponent(reader, ChaCha20NonceSize)
+	if err != nil {
+		return Header{}, err
 	}
-	builder.SetChaCha20Nonce(chaCha20Nonce)
 
-	return builder.Build(), nil
+	return builder.
+		WithSalt(saltData).
+		WithOriginalSize(binary.BigEndian.Uint64(sizeData)).
+		WithAesNonce(aesNonce).
+		WithChaCha20Nonce(chaCha20Nonce).
+		Build()
 }

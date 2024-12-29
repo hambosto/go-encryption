@@ -76,14 +76,17 @@ func performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, ke
 
 	aesNonce, chaCha20Nonce := operations.GetNonce()
 
-	builder := header.NewFileHeaderBuilder().
-		SetSalt(salt).
-		SetOriginalSize(uint64(fileInfo.Size())).
-		SetAesNonce(aesNonce).
-		SetChaCha20Nonce(chaCha20Nonce).
+	builder, err := header.NewHeaderBuilder().
+		WithSalt(salt).
+		WithOriginalSize(uint64(fileInfo.Size())).
+		WithAesNonce(aesNonce).
+		WithChaCha20Nonce(chaCha20Nonce).
 		Build()
+	if err != nil {
+		return fmt.Errorf("failed to build header: %w", err)
+	}
 
-	writer := header.NewBinaryHeaderWriter()
+	writer := header.NewHeaderWriter(header.NewBinaryHeaderIO())
 	if err = writer.Write(output, builder); err != nil {
 		return fmt.Errorf("failed to write file header: %w", err)
 	}
@@ -95,17 +98,17 @@ func performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, ke
 	return nil
 }
 
-func performDecryption(input *os.File, output *os.File, key []byte, fileHeader header.FileHeader) error {
+func performDecryption(input *os.File, output *os.File, key []byte, fileHeader header.Header) error {
 	operations, err := operations.NewFileProcessor(key, false)
 	if err != nil {
 		return fmt.Errorf("failed to create decryptor: %w", err)
 	}
 
-	if err = operations.SetNonce(fileHeader.AesNonce, fileHeader.ChaCha20Nonce); err != nil {
+	if err = operations.SetNonce(fileHeader.AesNonce.Value, fileHeader.ChaCha20Nonce.Value); err != nil {
 		return fmt.Errorf("failed to set nonce: %w", err)
 	}
 
-	if err = operations.Process(input, output, int64(fileHeader.OriginalSize)); err != nil {
+	if err = operations.Process(input, output, int64(fileHeader.OriginalSize.Value)); err != nil {
 		return fmt.Errorf("failed to decrypt file: %w", err)
 	}
 
@@ -214,13 +217,13 @@ func RunDecryption(inputFile string) error {
 	}
 	defer input.Close()
 
-	reader := header.NewBinaryHeaderReader()
+	reader := header.NewHeaderReader(header.NewBinaryHeaderIO())
 	fileHeader, err := reader.Read(input)
 	if err != nil {
 		return fmt.Errorf("failed to read file header: %w", err)
 	}
 
-	key, err := kdf.Derive([]byte(password), fileHeader.Salt)
+	key, err := kdf.Derive([]byte(password), fileHeader.Salt.Value)
 	if err != nil {
 		return fmt.Errorf("failed to derive key: %w", err)
 	}
