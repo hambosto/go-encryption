@@ -17,25 +17,21 @@ func NewHeaderReader(io HeaderIO) *HeaderReader {
 func (r *HeaderReader) Read(reader io.Reader) (Header, error) {
 	builder := NewHeaderBuilder()
 
-	// Read Salt
 	saltData, err := r.io.ReadComponent(reader, SaltSize)
 	if err != nil {
 		return Header{}, err
 	}
 
-	// Read OriginalSize
 	sizeData, err := r.io.ReadComponent(reader, OriginalSizeBytes)
 	if err != nil {
 		return Header{}, err
 	}
 
-	// Read AesNonce
 	aesNonce, err := r.io.ReadComponent(reader, AesNonceSize)
 	if err != nil {
 		return Header{}, err
 	}
 
-	// Read ChaCha20Nonce
 	chaCha20Nonce, err := r.io.ReadComponent(reader, ChaCha20NonceSize)
 	if err != nil {
 		return Header{}, err
