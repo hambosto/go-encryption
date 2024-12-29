@@ -74,8 +74,6 @@ func performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, ke
 		return fmt.Errorf("failed to create encryptor: %w", err)
 	}
 
-	// aesNonce, chaCha20Nonce := operations.GetNonce()
-
 	aesNonce := operations.GetAesNonce()
 	chaCha20Nonce := operations.GetChaCha20Nonce()
 
@@ -107,15 +105,15 @@ func performDecryption(input *os.File, output *os.File, key []byte, fileHeader h
 		return fmt.Errorf("failed to create decryptor: %w", err)
 	}
 
-	if operations.SetAesNonce(fileHeader.AesNonce.Value); err != nil {
+	if err := operations.SetAesNonce(fileHeader.AesNonce.Value); err != nil {
 		return fmt.Errorf("failed to set AES nonce: %w", err)
 	}
 
-	if operations.SetChaCha20Nonce(fileHeader.ChaCha20Nonce.Value); err != nil {
+	if err := operations.SetChaCha20Nonce(fileHeader.ChaCha20Nonce.Value); err != nil {
 		return fmt.Errorf("failed to set ChaCha20 nonce: %w", err)
 	}
 
-	if err = operations.Process(input, output, int64(fileHeader.OriginalSize.Value)); err != nil {
+	if err := operations.Process(input, output, int64(fileHeader.OriginalSize.Value)); err != nil {
 		return fmt.Errorf("failed to decrypt file: %w", err)
 	}
 
