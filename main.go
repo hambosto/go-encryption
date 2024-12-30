@@ -9,9 +9,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/common-nighthawk/go-figure"
 	"github.com/hambosto/go-encryption/cmd"
-	"github.com/manifoldco/promptui"
 )
 
 type Operation string
@@ -83,17 +83,18 @@ func clearTerminal() error {
 }
 
 func promptOperation() (Operation, error) {
-	prompt := promptui.Select{
-		Label: "Select operation",
-		Items: []Operation{Encrypt, Decrypt},
+	var operationStr string
+	prompt := &survey.Select{
+		Message: "Select Operation:",
+		Options: []string{string(Encrypt), string(Decrypt)},
 	}
 
-	_, result, err := prompt.Run()
+	err := survey.AskOne(prompt, &operationStr)
 	if err != nil {
 		return "", fmt.Errorf("operation selection failed: %w", err)
 	}
 
-	return Operation(result), nil
+	return Operation(operationStr), nil
 }
 
 func findEligibleFiles(operation Operation) ([]string, error) {
@@ -138,17 +139,18 @@ func selectFile(files []string) (string, error) {
 		return "", errors.New("no files available for selection")
 	}
 
-	prompt := promptui.Select{
-		Label: "Select file",
-		Items: files,
+	var selectedFile string
+	prompt := &survey.Select{
+		Message: "Select file:",
+		Options: files,
 	}
 
-	_, result, err := prompt.Run()
+	err := survey.AskOne(prompt, &selectedFile)
 	if err != nil {
 		return "", fmt.Errorf("file selection failed: %w", err)
 	}
 
-	return result, nil
+	return selectedFile, nil
 }
 
 func processFile(operation Operation, file string) error {
