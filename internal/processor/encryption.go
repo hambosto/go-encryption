@@ -12,17 +12,17 @@ func (p *Processor) encrypt(chunk []byte) ([]byte, error) {
 
 	paddedData := p.padData(compressedData)
 
-	aesEncrypted, err := p.aesCipher.Encrypt(paddedData)
+	aesEncrypted, err := p.AesCipher.Encrypt(paddedData)
 	if err != nil {
 		return nil, fmt.Errorf("aes encryption failed: %w", err)
 	}
 
-	chaCha20Encrypted, err := p.chaCha20Cipher.Encrypt(aesEncrypted)
+	chaCha20Encrypted, err := p.ChaCha20Cipher.Encrypt(aesEncrypted)
 	if err != nil {
 		return nil, fmt.Errorf("ChaCha20 encryption failed: %w", err)
 	}
 
-	encoded, err := p.encoder.Encode(chaCha20Encrypted)
+	encoded, err := p.Encoder.Encode(chaCha20Encrypted)
 	if err != nil {
 		return nil, fmt.Errorf("Reed-Solomon encoding failed: %w", err)
 	}
