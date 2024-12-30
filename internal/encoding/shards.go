@@ -1,12 +1,12 @@
 package encoding
 
-func (e *Encoder) splitIntoShards(data []byte) ([][]byte, int) {
-	shardSize := (len(data) + e.dataShards - 1) / e.dataShards
+func (r *ReedSolomon) splitIntoShards(data []byte) ([][]byte, int) {
+	shardSize := (len(data) + r.dataShards - 1) / r.dataShards
 	if shardSize == 0 {
 		shardSize = 1
 	}
 
-	totalShards := e.dataShards + e.parityShards
+	totalShards := r.dataShards + r.parityShards
 	shards := make([][]byte, totalShards)
 	for i := range shards {
 		shards[i] = make([]byte, shardSize)
@@ -14,7 +14,7 @@ func (e *Encoder) splitIntoShards(data []byte) ([][]byte, int) {
 
 	for i := 0; i < len(data); i++ {
 		shard := i / shardSize
-		if shard >= e.dataShards {
+		if shard >= r.dataShards {
 			break
 		}
 		shards[shard][i%shardSize] = data[i]
@@ -23,8 +23,8 @@ func (e *Encoder) splitIntoShards(data []byte) ([][]byte, int) {
 	return shards, shardSize
 }
 
-func (e *Encoder) joinShards(shards [][]byte, shardSize int) []byte {
-	totalShards := e.dataShards + e.parityShards
+func (r *ReedSolomon) joinShards(shards [][]byte, shardSize int) []byte {
+	totalShards := r.dataShards + r.parityShards
 	result := make([]byte, shardSize*totalShards)
 
 	for i, shard := range shards {

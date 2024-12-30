@@ -6,13 +6,13 @@ import (
 	"github.com/klauspost/reedsolomon"
 )
 
-type Encoder struct {
+type ReedSolomon struct {
 	encoder      reedsolomon.Encoder
 	dataShards   int
 	parityShards int
 }
 
-func New(dataShards, parityShards int) (*Encoder, error) {
+func NewReedSolomon(dataShards, parityShards int) (*ReedSolomon, error) {
 	if err := validateShards(dataShards, parityShards); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
@@ -22,7 +22,7 @@ func New(dataShards, parityShards int) (*Encoder, error) {
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
-	return &Encoder{
+	return &ReedSolomon{
 		encoder:      enc,
 		dataShards:   dataShards,
 		parityShards: parityShards,

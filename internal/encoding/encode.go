@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func (e *Encoder) Encode(data []byte) ([]byte, error) {
+func (r *ReedSolomon) Encode(data []byte) ([]byte, error) {
 	if len(data) == 0 || len(data) > maxDataSize {
 		return nil, fmt.Errorf("invalid data size: must be between 1 and %d bytes", maxDataSize)
 	}
@@ -14,11 +14,11 @@ func (e *Encoder) Encode(data []byte) ([]byte, error) {
 	binary.BigEndian.PutUint32(dataWithHeader, uint32(len(data)))
 	copy(dataWithHeader[headerLength:], data)
 
-	shards, size := e.splitIntoShards(dataWithHeader)
+	shards, size := r.splitIntoShards(dataWithHeader)
 
-	if err := e.encoder.Encode(shards); err != nil {
+	if err := r.encoder.Encode(shards); err != nil {
 		return nil, fmt.Errorf("encoding failed: %w", err)
 	}
 
-	return e.joinShards(shards, size), nil
+	return r.joinShards(shards, size), nil
 }

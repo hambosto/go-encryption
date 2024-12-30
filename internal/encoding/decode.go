@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-func (e *Encoder) Decode(data []byte) ([]byte, error) {
-	totalShards := e.dataShards + e.parityShards
+func (r *ReedSolomon) Decode(data []byte) ([]byte, error) {
+	totalShards := r.dataShards + r.parityShards
 
 	if len(data) == 0 || len(data)%totalShards != 0 {
 		return nil, fmt.Errorf("invalid encoded data size")
@@ -18,13 +18,13 @@ func (e *Encoder) Decode(data []byte) ([]byte, error) {
 		shards[i] = data[i*shardSize : (i+1)*shardSize]
 	}
 
-	if err := e.encoder.Reconstruct(shards); err != nil {
+	if err := r.encoder.Reconstruct(shards); err != nil {
 		return nil, fmt.Errorf("reconstruction failed: %w", err)
 	}
 
-	dataSize := shardSize * e.dataShards
+	dataSize := shardSize * r.dataShards
 	result := make([]byte, dataSize)
-	for i := 0; i < e.dataShards; i++ {
+	for i := 0; i < r.dataShards; i++ {
 		copy(result[i*shardSize:], shards[i])
 	}
 
