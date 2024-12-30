@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/schollz/progressbar/v3"
 )
@@ -44,7 +45,22 @@ func (f *FileProcessor) initializeProgressBar(size int64) {
 	if !f.chunkProcessor.IsEncryption {
 		action = "Decrypting..."
 	}
-	f.bar = progressbar.DefaultBytes(size, action)
+	f.bar = progressbar.NewOptions64(
+		size,
+		progressbar.OptionSetDescription(action),
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionShowBytes(true),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionThrottle(65*time.Millisecond),
+		progressbar.OptionShowCount(),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]⣿[reset]",
+			SaucerHead:    "[green]⣷[reset]",
+			SaucerPadding: "⣀",
+			BarStart:      "[green]⟦[reset]",
+			BarEnd:        "[green]⟧[reset]",
+		}),
+	)
 }
 
 func (f *FileProcessor) executePipeline(r io.Reader, w io.Writer) error {

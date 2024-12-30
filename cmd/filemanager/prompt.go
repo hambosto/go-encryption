@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/AlecAivazis/survey/v2"
+	"github.com/manifoldco/promptui"
 )
 
 type UserPrompt struct {
@@ -16,27 +16,41 @@ func NewUserPrompt(fm *FileManager) *UserPrompt {
 }
 
 func (up *UserPrompt) ConfirmOverwrite(path string) (bool, error) {
-	var overwrite bool
-	prompt := &survey.Confirm{
-		Message: fmt.Sprintf("Output file %s already exists. Overwrite?", path),
-		Default: false,
+	prompt := promptui.Prompt{
+		Label:     fmt.Sprintf("Output file %s already exists. Overwrite", path),
+		IsConfirm: true,
+		Default:   "n",
 	}
-	err := survey.AskOne(prompt, &overwrite)
-	return overwrite, err
+
+	result, err := prompt.Run()
+	if err == promptui.ErrAbort {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return result == "y" || result == "Y", nil
 }
 
 func (up *UserPrompt) GetPassword() (string, error) {
-	var password, confirm string
+	passwordPrompt := promptui.Prompt{
+		Label: "Enter password",
+		Mask:  '*',
+	}
 
-	if err := survey.AskOne(&survey.Password{
-		Message: "Enter password:",
-	}, &password); err != nil {
+	password, err := passwordPrompt.Run()
+	if err != nil {
 		return "", fmt.Errorf("failed to get password: %w", err)
 	}
 
-	if err := survey.AskOne(&survey.Password{
-		Message: "Confirm password:",
-	}, &confirm); err != nil {
+	confirmPrompt := promptui.Prompt{
+		Label: "Confirm password",
+		Mask:  '*',
+	}
+
+	confirm, err := confirmPrompt.Run()
+	if err != nil {
 		return "", fmt.Errorf("failed to get password confirmation: %w", err)
 	}
 
@@ -48,27 +62,34 @@ func (up *UserPrompt) GetPassword() (string, error) {
 }
 
 func (up *UserPrompt) ConfirmDelete(path string, prompt string) (bool, DeleteType, error) {
-	var shouldDelete bool
-	if err := survey.AskOne(&survey.Confirm{
-		Message: fmt.Sprintf("%s %s?", prompt, path),
-		Default: false,
-	}, &shouldDelete); err != nil {
+	confirmPrompt := promptui.Prompt{
+		Label:     fmt.Sprintf("%s %s", prompt, path),
+		IsConfirm: true,
+		Default:   "n",
+	}
+
+	result, err := confirmPrompt.Run()
+	if err == promptui.ErrAbort {
+		return false, "", nil
+	}
+	if err != nil {
 		return false, "", err
 	}
 
-	if !shouldDelete {
+	if result != "y" && result != "Y" {
 		return false, "", nil
 	}
 
-	var deleteType string
-	if err := survey.AskOne(&survey.Select{
-		Message: "Select delete type:",
-		Options: []string{
+	typeSelect := promptui.Select{
+		Label: "Select delete type",
+		Items: []string{
 			string(DeleteTypeNormal),
 			string(DeleteTypeSecure),
 		},
-		Default: string(DeleteTypeNormal),
-	}, &deleteType); err != nil {
+	}
+
+	_, deleteType, err := typeSelect.Run()
+	if err != nil {
 		return false, "", err
 	}
 
