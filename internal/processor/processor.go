@@ -8,10 +8,10 @@ import (
 )
 
 type Processor struct {
-	aesCipher      *algorithms.AESCipher
-	chaCha20Cipher *algorithms.ChaCha20Cipher
-	encoder        *encoding.Encoder
-	isEncryption   bool
+	AesCipher      *algorithms.AESCipher
+	ChaCha20Cipher *algorithms.ChaCha20Cipher
+	Encoder        *encoding.Encoder
+	IsEncryption   bool
 }
 
 func NewProcessor(key []byte, isEncryption bool) (*Processor, error) {
@@ -35,15 +35,15 @@ func NewProcessor(key []byte, isEncryption bool) (*Processor, error) {
 	}
 
 	return &Processor{
-		aesCipher:      aesCipher,
-		chaCha20Cipher: chaCha20Cipher,
-		encoder:        encoder,
-		isEncryption:   isEncryption,
+		AesCipher:      aesCipher,
+		ChaCha20Cipher: chaCha20Cipher,
+		Encoder:        encoder,
+		IsEncryption:   isEncryption,
 	}, nil
 }
 
 func (p *Processor) ProcessChunk(chunk []byte) ([]byte, error) {
-	if p.isEncryption {
+	if p.IsEncryption {
 		return p.encrypt(chunk)
 	}
 	return p.decrypt(chunk)
