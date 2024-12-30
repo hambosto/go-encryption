@@ -81,7 +81,7 @@ func (fp *FileProcessor) displayLogo() {
 	logo := fmt.Sprintf(`
  ▗▄▄▖ ▗▄▖ ▗▄▄▄▖▗▖  ▗▖ ▗▄▄▖▗▄▄▖▗▖  ▗▖▗▄▄▖▗▄▄▄▖▗▄▄▄▖ ▗▄▖ ▗▖  ▗▖
 ▐▌   ▐▌ ▐▌▐▌   ▐▛▚▖▐▌▐▌   ▐▌ ▐▌▝▚▞▘ ▐▌ ▐▌ █    █  ▐▌ ▐▌▐▛▚▖▐▌
-▐▌▝▜▌▐▌ ▐▌▐▛▀▀▘▐▌ ▝▜▌▐▌   ▐▛▀▚▖ ▐▌  ▐▛▀▘  █    █  ▐▌ ▐▌▐▌ ▝▜▌ %s
+▐▌▝▜▌▐▌ ▐▌▐▛▀▀▘▐▌ ▝▜▌▐▌   ▐▛▀▚▖ ▐▌  ▐▛▀▘  █    █  ▐▌ ▐▌▐▌ ▝▜▌ v%s
 ▝▚▄▞▘▝▚▄▞▘▐▙▄▄▖▐▌  ▐▌▝▚▄▄▖▐▌ ▐▌ ▐▌  ▐▌    █  ▗▄█▄▖▝▚▄▞▘▐▌  ▐▌
  Secure file encryption and decryption CLI tool built with Go
 `, fp.config.Version)
