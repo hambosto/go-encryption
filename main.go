@@ -13,9 +13,10 @@ import (
 	"github.com/hambosto/go-encryption/cmd"
 )
 
-const (
-	encExtension = ".enc"
-)
+type Config struct {
+	Version      string
+	EncExtension string
+}
 
 type Operation string
 
@@ -24,13 +25,83 @@ const (
 	Decrypt Operation = "Decrypt"
 )
 
-func clearTerminal() error {
-	cmd := exec.Command("clear")
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/c", "cls")
+type FileProcessor struct {
+	config Config
+}
+
+func NewFileProcessor() *FileProcessor {
+	return &FileProcessor{
+		config: Config{
+			Version:      "1.0",
+			EncExtension: ".enc",
+		},
 	}
-	cmd.Stdout = os.Stdout
-	return cmd.Run()
+}
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	processor := NewFileProcessor()
+
+	if err := clearTerminal(); err != nil {
+		return fmt.Errorf("failed to clear terminal: %w", err)
+	}
+
+	processor.displayLogo()
+
+	operation, err := promptOperation()
+	if err != nil {
+		return fmt.Errorf("failed to get operation: %w", err)
+	}
+
+	files, err := processor.findEligibleFiles(operation)
+	if err != nil {
+		return fmt.Errorf("failed to list files: %w", err)
+	}
+
+	if len(files) == 0 {
+		fmt.Println("No eligible files found.")
+		return nil
+	}
+
+	selectedFile, err := selectFile(files)
+	if err != nil {
+		return fmt.Errorf("failed to select file: %w", err)
+	}
+
+	return processor.processFile(operation, selectedFile)
+}
+
+func (fp *FileProcessor) displayLogo() {
+	logo := fmt.Sprintf(`
+ ▗▄▄▖ ▗▄▖ ▗▄▄▄▖▗▖  ▗▖ ▗▄▄▖▗▄▄▖▗▖  ▗▖▗▄▄▖▗▄▄▄▖▗▄▄▄▖ ▗▄▖ ▗▖  ▗▖
+▐▌   ▐▌ ▐▌▐▌   ▐▛▚▖▐▌▐▌   ▐▌ ▐▌▝▚▞▘ ▐▌ ▐▌ █    █  ▐▌ ▐▌▐▛▚▖▐▌
+▐▌▝▜▌▐▌ ▐▌▐▛▀▀▘▐▌ ▝▜▌▐▌   ▐▛▀▚▖ ▐▌  ▐▛▀▘  █    █  ▐▌ ▐▌▐▌ ▝▜▌ %s
+▝▚▄▞▘▝▚▄▞▘▐▙▄▄▖▐▌  ▐▌▝▚▄▄▖▐▌ ▐▌ ▐▌  ▐▌    █  ▗▄█▄▖▝▚▄▞▘▐▌  ▐▌
+ Secure file encryption and decryption CLI tool built with Go
+`, fp.config.Version)
+	fmt.Println(logo)
+}
+
+func clearTerminal() error {
+	var cmd string
+	var args []string
+
+	if runtime.GOOS == "windows" {
+		cmd = "cmd"
+		args = []string{"/c", "cls"}
+	} else {
+		cmd = "clear"
+	}
+
+	clearCmd := exec.Command(cmd, args...)
+	clearCmd.Stdout = os.Stdout
+	return clearCmd.Run()
 }
 
 func promptOperation() (Operation, error) {
@@ -40,94 +111,73 @@ func promptOperation() (Operation, error) {
 		Options: []string{string(Encrypt), string(Decrypt)},
 		Default: string(Encrypt),
 	}
+
 	if err := survey.AskOne(prompt, &operation); err != nil {
 		return "", fmt.Errorf("operation selection failed: %w", err)
 	}
+
 	return Operation(operation), nil
 }
 
-func listEligibleFiles(operation Operation) ([]string, error) {
+func (fp *FileProcessor) findEligibleFiles(operation Operation) ([]string, error) {
 	var files []string
 	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("error accessing path %s: %w", path, err)
 		}
-		if info.IsDir() || strings.HasPrefix(info.Name(), ".") {
+
+		if shouldSkipFile(info, path) {
 			return nil
 		}
 
-		switch operation {
-		case Encrypt:
-			if !strings.HasSuffix(path, encExtension) {
-				files = append(files, path)
-			}
-		case Decrypt:
-			if strings.HasSuffix(path, encExtension) {
-				files = append(files, path)
-			}
+		if isFileEligible(path, operation, fp.config.EncExtension) {
+			files = append(files, path)
 		}
 		return nil
 	})
+
 	return files, err
 }
 
-func promptFileSelection(files []string) (string, error) {
+func shouldSkipFile(info os.FileInfo, path string) bool {
+	return info.IsDir() ||
+		strings.HasPrefix(info.Name(), ".") ||
+		strings.Contains(path, "vendor/") ||
+		strings.Contains(path, "node_modules/")
+}
+
+func isFileEligible(path string, operation Operation, encExtension string) bool {
+	isEncrypted := strings.HasSuffix(path, encExtension)
+	return (operation == Encrypt && !isEncrypted) ||
+		(operation == Decrypt && isEncrypted)
+}
+
+func selectFile(files []string) (string, error) {
 	if len(files) == 0 {
 		return "", errors.New("no files available for selection")
 	}
+
 	var selectedFile string
 	prompt := &survey.Select{
 		Message: "Select file:",
 		Options: files,
 		Default: files[0],
 	}
+
 	if err := survey.AskOne(prompt, &selectedFile); err != nil {
 		return "", fmt.Errorf("file selection failed: %w", err)
 	}
+
 	return selectedFile, nil
 }
 
-func handleFileOperation(operation Operation, file string) error {
+func (fp *FileProcessor) processFile(operation Operation, file string) error {
 	switch operation {
 	case Encrypt:
 		return cmd.RunEncryption(file)
 	case Decrypt:
 		return cmd.RunDecryption(file)
 	default:
-		return errors.New("invalid operation")
-	}
-}
-
-func main() {
-	if err := clearTerminal(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error clearing terminal: %v\n", err)
-		return
-	}
-
-	operation, err := promptOperation()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error selecting operation: %v\n", err)
-		return
-	}
-
-	files, err := listEligibleFiles(operation)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error listing files: %v\n", err)
-		return
-	}
-
-	if len(files) == 0 {
-		fmt.Println("No eligible files found.")
-		return
-	}
-
-	selectedFile, err := promptFileSelection(files)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error selecting file: %v\n", err)
-		return
-	}
-
-	if err := handleFileOperation(operation, selectedFile); err != nil {
-		fmt.Fprintf(os.Stderr, "Error processing file: %v\n", err)
+		return fmt.Errorf("invalid operation: %s", operation)
 	}
 }
