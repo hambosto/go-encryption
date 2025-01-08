@@ -9,7 +9,7 @@ import (
 	"github.com/hambosto/go-encryption/internal/worker"
 )
 
-func (cp *CryptoProcessor) openInputFile(path string) (*os.File, os.FileInfo, error) {
+func (op *Operations) openInputFile(path string) (*os.File, os.FileInfo, error) {
 	input, err := os.Open(path)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open input file: %w", err)
@@ -24,7 +24,7 @@ func (cp *CryptoProcessor) openInputFile(path string) (*os.File, os.FileInfo, er
 	return input, info, nil
 }
 
-func (cp *CryptoProcessor) deriveKey(password string) ([]byte, []byte, error) {
+func (op *Operations) deriveKey(password string) ([]byte, []byte, error) {
 	salt, err := kdf.GenerateSalt()
 	if err != nil {
 		return nil, nil, fmt.Errorf("salt generation failed: %w", err)
@@ -38,8 +38,8 @@ func (cp *CryptoProcessor) deriveKey(password string) ([]byte, []byte, error) {
 	return key, salt, nil
 }
 
-func (cp *CryptoProcessor) handleCleanup(path string, isEncryption bool) error {
-	shouldDelete, deleteType, err := cp.userPrompt.ConfirmDelete(
+func (op *Operations) handleCleanup(path string, isEncryption bool) error {
+	shouldDelete, deleteType, err := op.userPrompt.ConfirmDelete(
 		path,
 		fmt.Sprintf("Delete %s file", map[bool]string{true: "original", false: "encrypted"}[isEncryption]),
 	)
@@ -48,7 +48,7 @@ func (cp *CryptoProcessor) handleCleanup(path string, isEncryption bool) error {
 	}
 
 	if shouldDelete {
-		if err := cp.fileManager.Delete(path, deleteType); err != nil {
+		if err := op.fileManager.Delete(path, deleteType); err != nil {
 			return fmt.Errorf("file deletion failed: %w", err)
 		}
 	}
@@ -56,7 +56,7 @@ func (cp *CryptoProcessor) handleCleanup(path string, isEncryption bool) error {
 	return nil
 }
 
-func (cp *CryptoProcessor) performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, key []byte, salt []byte) error {
+func (cp *Operations) performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, key []byte, salt []byte) error {
 	worker, err := worker.NewFileProcessor(key, true)
 	if err != nil {
 		return fmt.Errorf("encryption processor creation failed: %w", err)
@@ -83,7 +83,7 @@ func (cp *CryptoProcessor) performEncryption(input *os.File, output *os.File, fi
 	return nil
 }
 
-func (cp *CryptoProcessor) performDecryption(input *os.File, output *os.File, key []byte, fileHeader header.Header) error {
+func (op *Operations) performDecryption(input *os.File, output *os.File, key []byte, fileHeader header.Header) error {
 	worker, err := worker.NewFileProcessor(key, false)
 	if err != nil {
 		return fmt.Errorf("decryption processor creation failed: %w", err)

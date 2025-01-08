@@ -7,7 +7,7 @@ const (
 	OperationDecrypt OperationType = "decryption"
 )
 
-type CryptoConfig struct {
+type OperationConfig struct {
 	InputPath  string
 	OutputPath string
 	Password   string

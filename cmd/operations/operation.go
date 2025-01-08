@@ -6,28 +6,28 @@ import (
 	"github.com/hambosto/go-encryption/cmd/filemanager"
 )
 
-type CryptoProcessor struct {
+type Operations struct {
 	fileManager *filemanager.FileManager
 	userPrompt  *filemanager.UserPrompt
 }
 
-func NewCryptoProcessor(fileManager *filemanager.FileManager, userPrompt *filemanager.UserPrompt) *CryptoProcessor {
-	return &CryptoProcessor{
+func NewOperation(fileManager *filemanager.FileManager, userPrompt *filemanager.UserPrompt) *Operations {
+	return &Operations{
 		fileManager: fileManager,
 		userPrompt:  userPrompt,
 	}
 }
 
-func (cp *CryptoProcessor) Process(config CryptoConfig) error {
-	if err := cp.validateOperation(config); err != nil {
+func (op *Operations) Process(config OperationConfig) error {
+	if err := op.validateOperation(config); err != nil {
 		return err
 	}
 
 	switch config.Operation {
 	case OperationEncrypt:
-		return cp.handleEncryption(config)
+		return op.handleEncryption(config)
 	case OperationDecrypt:
-		return cp.handleDecryption(config)
+		return op.handleDecryption(config)
 	default:
 		return fmt.Errorf("unsupported operation: %s", config.Operation)
 	}
