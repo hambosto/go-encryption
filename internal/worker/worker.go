@@ -86,7 +86,7 @@ func (f *FileProcessor) executePipeline(r io.Reader, w io.Writer) error {
 }
 
 func (f *FileProcessor) startWorkers(wg *sync.WaitGroup, jobs <-chan Job, results chan<- Result) {
-	for i := 0; i < f.workers; i++ {
+	for range f.workers {
 		wg.Add(1)
 		go f.processJobs(jobs, results, wg)
 	}
