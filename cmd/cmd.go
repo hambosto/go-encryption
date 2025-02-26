@@ -122,7 +122,7 @@ type FileFinder struct {
 func newFileFinder() *FileFinder {
 	return &FileFinder{
 		skippedDirs:  []string{"vendor/", "node_modules/", ".git", ".github"},
-		skippedFiles: []string{".go", "go.mod", "go.sum"},
+		skippedFiles: []string{".go", "go.mod", "go.sum", ".nix", ".gitignore"},
 	}
 }
 

@@ -25,14 +25,16 @@ func (op *Operations) openInputFile(path string) (*os.File, os.FileInfo, error) 
 }
 
 func (op *Operations) deriveKey(password string) ([]byte, []byte, error) {
+	kdf := kdf.NewWithDefaults()
+
 	salt, err := kdf.GenerateSalt()
 	if err != nil {
-		return nil, nil, fmt.Errorf("salt generation failed: %w", err)
+		return nil, nil, fmt.Errorf("failed to generate salt: %w", err)
 	}
 
-	key, err := kdf.Derive([]byte(password), salt)
+	key, err := kdf.DeriveKey([]byte(password), salt)
 	if err != nil {
-		return nil, nil, fmt.Errorf("key derivation failed: %w", err)
+		return nil, nil, fmt.Errorf("failed to derive key: %w", err)
 	}
 
 	return key, salt, nil

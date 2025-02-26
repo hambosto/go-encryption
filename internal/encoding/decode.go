@@ -24,7 +24,7 @@ func (r *ReedSolomon) Decode(data []byte) ([]byte, error) {
 
 	dataSize := shardSize * r.dataShards
 	result := make([]byte, dataSize)
-	for i := 0; i < r.dataShards; i++ {
+	for i := range r.dataShards {
 		copy(result[i*shardSize:], shards[i])
 	}
 

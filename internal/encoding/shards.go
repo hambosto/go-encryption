@@ -12,7 +12,7 @@ func (r *ReedSolomon) splitIntoShards(data []byte) ([][]byte, int) {
 		shards[i] = make([]byte, shardSize)
 	}
 
-	for i := 0; i < len(data); i++ {
+	for i := range data {
 		shard := i / shardSize
 		if shard >= r.dataShards {
 			break

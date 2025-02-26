@@ -29,7 +29,8 @@ func (op *Operations) handleDecryption(config OperationConfig) error {
 		}
 	}
 
-	key, err := kdf.Derive([]byte(password), fileHeader.Salt.Value)
+	kdf := kdf.NewWithDefaults()
+	key, err := kdf.DeriveKey([]byte(password), fileHeader.Salt.Value)
 	if err != nil {
 		return fmt.Errorf("key derivation failed: %w", err)
 	}
