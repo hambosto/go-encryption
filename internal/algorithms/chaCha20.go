@@ -2,7 +2,6 @@ package algorithms
 
 import (
 	"crypto/rand"
-	"errors"
 	"fmt"
 
 	"golang.org/x/crypto/chacha20poly1305"
@@ -28,7 +27,7 @@ func NewChaCha20Cipher(key []byte) (*ChaCha20Cipher, error) {
 
 func (c *ChaCha20Cipher) Encrypt(plaintext []byte) ([]byte, error) {
 	if len(plaintext) == 0 {
-		return nil, errors.New("plaintext cannot be empty")
+		return nil, fmt.Errorf("plaintext cannot be empty")
 	}
 
 	aead, err := chacha20poly1305.New(c.key)
