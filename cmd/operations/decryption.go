@@ -29,7 +29,17 @@ func (op *Operations) handleDecryption(config OperationConfig) error {
 		}
 	}
 
-	kdf := kdf.NewWithDefaults()
+	kdf, err := kdf.New(
+		kdf.WithMemory(128*1024), // 128 MB
+		kdf.WithTimeCost(6),
+		kdf.WithThreads(8),
+		kdf.WithKeyLength(64),
+		kdf.WithSaltLength(32),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create KDF: %v", err)
+	}
+
 	key, err := kdf.DeriveKey([]byte(password), fileHeader.Salt.Value)
 	if err != nil {
 		return fmt.Errorf("key derivation failed: %w", err)

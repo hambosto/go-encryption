@@ -25,7 +25,16 @@ func (op *Operations) openInputFile(path string) (*os.File, os.FileInfo, error) 
 }
 
 func (op *Operations) deriveKey(password string) ([]byte, []byte, error) {
-	kdf := kdf.NewWithDefaults()
+	kdf, err := kdf.New(
+		kdf.WithMemory(128*1024), // 128 MB
+		kdf.WithTimeCost(6),
+		kdf.WithThreads(8),
+		kdf.WithKeyLength(64),
+		kdf.WithSaltLength(32),
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create KDF: %v", err)
+	}
 
 	salt, err := kdf.GenerateSalt()
 	if err != nil {
