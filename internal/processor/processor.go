@@ -8,10 +8,10 @@ import (
 )
 
 type Processor struct {
-	AesCipher      *algorithms.AESCipher
-	ChaCha20Cipher *algorithms.ChaCha20Cipher
-	Encoder        *encoding.ReedSolomon
-	IsEncryption   bool
+	primaryCipher   algorithms.Cipher
+	secondaryCipher algorithms.Cipher
+	reedsolomon     *encoding.ReedSolomon
+	IsEncryption    bool
 }
 
 func NewProcessor(key []byte, isEncryption bool) (*Processor, error) {
@@ -19,12 +19,12 @@ func NewProcessor(key []byte, isEncryption bool) (*Processor, error) {
 		return nil, fmt.Errorf("encryption key must be at least 64 bytes long")
 	}
 
-	aesCipher, err := algorithms.NewAESCipher(key[:32])
+	primaryCipher, err := algorithms.NewCipher(algorithms.AES, key[:32])
 	if err != nil {
 		return nil, fmt.Errorf("failed to create aes cipher: %w", err)
 	}
 
-	chaCha20Cipher, err := algorithms.NewChaCha20Cipher(key[32:64])
+	secondaryCipher, err := algorithms.NewCipher(algorithms.CHACHA20, key[32:64])
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ChaCha20 cipher: %w", err)
 	}
@@ -35,10 +35,10 @@ func NewProcessor(key []byte, isEncryption bool) (*Processor, error) {
 	}
 
 	return &Processor{
-		AesCipher:      aesCipher,
-		ChaCha20Cipher: chaCha20Cipher,
-		Encoder:        encoder,
-		IsEncryption:   isEncryption,
+		primaryCipher:   primaryCipher,
+		secondaryCipher: secondaryCipher,
+		reedsolomon:     encoder,
+		IsEncryption:    isEncryption,
 	}, nil
 }
 
@@ -47,4 +47,14 @@ func (p *Processor) ProcessChunk(chunk []byte) ([]byte, error) {
 		return p.encrypt(chunk)
 	}
 	return p.decrypt(chunk)
+}
+
+// GetPrimaryCipher returns the primary cipher (AES)
+func (p *Processor) GetPrimaryCipher() algorithms.Cipher {
+	return p.primaryCipher
+}
+
+// GetSecondaryCipher returns the secondary cipher (ChaCha20)
+func (p *Processor) GetSecondaryCipher() algorithms.Cipher {
+	return p.secondaryCipher
 }
