@@ -1,7 +1,6 @@
 package encoding
 
 const (
-	maxShards    = 256
-	maxDataSize  = 1 << 32 // 4GB
-	headerLength = 4
+	headerLength = 4       // Size of the length header in bytes
+	maxDataSize  = 1 << 30 // Maximum allowed data size (1GB)
 )

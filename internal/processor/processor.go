@@ -10,7 +10,7 @@ import (
 type Processor struct {
 	primaryCipher   algorithms.Cipher
 	secondaryCipher algorithms.Cipher
-	reedsolomon     *encoding.ReedSolomon
+	reedsolomon     *encoding.ReedSolomonEncoder
 	IsEncryption    bool
 }
 
@@ -29,7 +29,7 @@ func NewProcessor(key []byte, isEncryption bool) (*Processor, error) {
 		return nil, fmt.Errorf("failed to create ChaCha20 cipher: %w", err)
 	}
 
-	encoder, err := encoding.NewReedSolomon(4, 10)
+	encoder, err := encoding.NewReedSolomonEncoder(encoding.Config{DataShards: 4, ParityShards: 10})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Reed-Solomon encoder: %w", err)
 	}
