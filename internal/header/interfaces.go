@@ -8,8 +8,8 @@ type HeaderComponent interface {
 }
 
 type HeaderSerializer interface {
-	Serialize(interface{}) ([]byte, error)
-	Deserialize([]byte, interface{}) error
+	Serialize(any) ([]byte, error)
+	Deserialize([]byte, any) error
 }
 
 type HeaderIO interface {

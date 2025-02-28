@@ -1,4 +1,3 @@
-// internal/header/reader_writer.go
 package header
 
 import (
