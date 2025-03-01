@@ -49,12 +49,10 @@ func (p *Processor) ProcessChunk(chunk []byte) ([]byte, error) {
 	return p.decrypt(chunk)
 }
 
-// GetPrimaryCipher returns the primary cipher (AES)
 func (p *Processor) GetPrimaryCipher() algorithms.Cipher {
 	return p.primaryCipher
 }
 
-// GetSecondaryCipher returns the secondary cipher (ChaCha20)
 func (p *Processor) GetSecondaryCipher() algorithms.Cipher {
 	return p.secondaryCipher
 }
