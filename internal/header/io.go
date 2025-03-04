@@ -1,4 +1,3 @@
-// internal/header/io.go
 package header
 
 import (
