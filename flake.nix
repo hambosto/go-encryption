@@ -14,8 +14,6 @@
       ...
     }:
     let
-      pname = "go-encryption";
-      version = "1.0";
 
       nixosModule =
         {
@@ -25,11 +23,11 @@
           ...
         }:
         let
-          cfg = config.programs.${pname};
+          cfg = config.programs.go-encryption;
         in
         {
-          options.programs.${pname} = {
-            enable = lib.mkEnableOption "Enable the ${pname} application";
+          options.programs.go-encryption = {
+            enable = lib.mkEnableOption "Enable the Go Encryption CLI tool";
           };
 
           config = lib.mkIf cfg.enable {
@@ -43,8 +41,11 @@
           pkgs = nixpkgs.legacyPackages.${system};
 
           package = pkgs.buildGoModule {
-            inherit pname version;
+            pname = "go-encryption";
+            version = "1.0";
+
             src = ./.;
+
             vendorHash = "sha256-nxRo/spwxVE+B41znEJEWuHozxJ6dc/BAAFRU5TIYuk=";
 
             env.CGO_ENABLED = 0;
@@ -58,12 +59,7 @@
         {
           packages = {
             default = package;
-            ${pname} = package;
-          };
-
-          apps.default = flake-utils.lib.mkApp {
-            drv = package;
-            name = pname;
+            go-encryption = package;
           };
         };
     in
@@ -71,7 +67,7 @@
     // {
       nixosModules = {
         default = nixosModule;
-        ${pname} = nixosModule;
+        go-encryption = nixosModule;
       };
     };
 }
