@@ -28,7 +28,9 @@
           cfg = config.programs.${pname};
         in
         {
-          options.programs.${pname}.enable = lib.mkEnableOption "Enable the ${pname} application";
+          options.programs.${pname} = {
+            enable = lib.mkEnableOption "Enable the ${pname} application";
+          };
 
           config = lib.mkIf cfg.enable {
             home.packages = [ self.packages.${pkgs.system}.default ];
@@ -39,27 +41,37 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-        in
-        {
-          packages.default = pkgs.buildGoModule {
+
+          package = pkgs.buildGoModule {
             inherit pname version;
             src = ./.;
             vendorHash = "sha256-nxRo/spwxVE+B41znEJEWuHozxJ6dc/BAAFRU5TIYuk=";
+
             env.CGO_ENABLED = 0;
+
             ldflags = [
               "-extldflags '-static'"
               "-s -w"
             ];
           };
+        in
+        {
+          packages = {
+            default = package;
+            ${pname} = package;
+          };
 
           apps.default = flake-utils.lib.mkApp {
-            drv = self.packages.${system}.default;
+            drv = package;
             name = pname;
           };
         };
     in
     flake-utils.lib.eachDefaultSystem perSystem
     // {
-      nixosModules.${pname} = nixosModule;
+      nixosModules = {
+        default = nixosModule;
+        ${pname} = nixosModule;
+      };
     };
 }
