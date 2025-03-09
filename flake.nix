@@ -45,7 +45,7 @@
           package = pkgs.buildGoModule {
             inherit pname version;
             src = ./.;
-            vendorSha256 = "sha256-nxRo/spwxVE+B41znEJEWuHozxJ6dc/BAAFRU5TIYuk=";
+            vendorHash = "sha256-nxRo/spwxVE+B41znEJEWuHozxJ6dc/BAAFRU5TIYuk=";
 
             env.CGO_ENABLED = 0;
 
