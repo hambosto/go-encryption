@@ -2,6 +2,8 @@ package processor
 
 import (
 	"fmt"
+
+	"github.com/hambosto/go-encryption/internal/compress"
 )
 
 func (p *Processor) decrypt(chunk []byte) ([]byte, error) {
@@ -20,7 +22,7 @@ func (p *Processor) decrypt(chunk []byte) ([]byte, error) {
 		return nil, fmt.Errorf("aes decryption failed: %w", err)
 	}
 
-	zlibDecompressed, err := p.decompressData(aesDecrypted)
+	zlibDecompressed, err := compress.DecompressData(aesDecrypted)
 	if err != nil {
 		return nil, fmt.Errorf("zlib decompression failed: %w", err)
 	}

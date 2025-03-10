@@ -2,19 +2,22 @@ package processor
 
 import (
 	"fmt"
+
+	"github.com/hambosto/go-encryption/internal/compress"
+	"github.com/hambosto/go-encryption/internal/padding"
 )
 
 func (p *Processor) encrypt(chunk []byte) ([]byte, error) {
-	compressedData, err := p.compressData(chunk)
+	compressedData, err := compress.CompressData(chunk)
 	if err != nil {
-		return nil, fmt.Errorf("compression failed: %w", err)
+		return nil, fmt.Errorf("Compression failed: %w", err)
 	}
 
-	paddedData := p.padData(compressedData)
+	paddedData := padding.Pad(compressedData)
 
 	aesEncrypted, err := p.AESCipher.Encrypt(paddedData)
 	if err != nil {
-		return nil, fmt.Errorf("aes encryption failed: %w", err)
+		return nil, fmt.Errorf("AES encryption failed: %w", err)
 	}
 
 	chaCha20Encrypted, err := p.ChaCha20Cipher.Encrypt(aesEncrypted)
