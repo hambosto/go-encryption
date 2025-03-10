@@ -30,18 +30,18 @@ func NewFileProcessor(key []byte, isEncryption bool) (*FileProcessor, error) {
 	}, nil
 }
 
-func (f *FileProcessor) GetPrimaryCipherNonce() []byte {
-	return f.chunkProcessor.GetPrimaryCipher().GetNonce()
+func (f *FileProcessor) GetAesNonce() []byte {
+	return f.chunkProcessor.AESCipher.GetNonce()
 }
 
-func (f *FileProcessor) GetSecondaryCipherNonce() []byte {
-	return f.chunkProcessor.GetSecondaryCipher().GetNonce()
+func (f *FileProcessor) GetChaCha20Nonce() []byte {
+	return f.chunkProcessor.ChaCha20Cipher.GetNonce()
 }
 
-func (f *FileProcessor) SetPrimaryCipherNonce(nonce []byte) error {
-	return f.chunkProcessor.GetPrimaryCipher().SetNonce(nonce)
+func (f *FileProcessor) SetAesNonce(aesNonce []byte) error {
+	return f.chunkProcessor.AESCipher.SetNonce(aesNonce)
 }
 
-func (f *FileProcessor) SetSecondaryCipherNonce(nonce []byte) error {
-	return f.chunkProcessor.GetSecondaryCipher().SetNonce(nonce)
+func (f *FileProcessor) SetChaCha20Nonce(aesNonce []byte) error {
+	return f.chunkProcessor.ChaCha20Cipher.SetNonce(aesNonce)
 }

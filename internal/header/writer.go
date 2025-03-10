@@ -1,6 +1,8 @@
 package header
 
-import "io"
+import (
+	"io"
+)
 
 type HeaderWriter struct {
 	io HeaderIO

@@ -7,72 +7,69 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-const (
-	chaCha20NonceSize = 24
-)
-
-type chaCha20Cipher struct {
+type ChaCha20Cipher struct {
 	key   []byte
 	nonce []byte
 }
 
-func NewChaCha20Cipher(key []byte) (Cipher, error) {
+func NewChaCha20Cipher(key []byte) (*ChaCha20Cipher, error) {
 	if len(key) != chacha20poly1305.KeySize {
-		return nil, fmt.Errorf("%w: expected %d bytes, got %d", ErrInvalidKeySize, chacha20poly1305.KeySize, len(key))
+		return nil, fmt.Errorf("invalid key size: %d bytes, expected %d bytes", len(key), chacha20poly1305.KeySize)
 	}
 
-	nonce := make([]byte, chaCha20NonceSize)
+	nonce := make([]byte, 24)
 	if _, err := rand.Read(nonce); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrNonceGenerationFailed, err)
+		return nil, fmt.Errorf("failed to generate nonce: %w", err)
 	}
 
-	return &chaCha20Cipher{
+	return &ChaCha20Cipher{
 		key:   key,
 		nonce: nonce,
 	}, nil
 }
 
-func (c *chaCha20Cipher) Encrypt(plaintext []byte) ([]byte, error) {
+func (c *ChaCha20Cipher) Encrypt(plaintext []byte) ([]byte, error) {
 	if len(plaintext) == 0 {
-		return nil, ErrEmptyPlaintext
+		return nil, fmt.Errorf("plaintext cannot be empty")
 	}
 
 	aead, err := chacha20poly1305.New(c.key)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrCipherCreationFailed, err)
+		return nil, fmt.Errorf("failed to create ChaCha20 cipher: %w", err)
 	}
 
 	nonce := c.nonce[:chacha20poly1305.NonceSize]
 	return aead.Seal(nil, nonce, plaintext, nil), nil
 }
 
-func (c *chaCha20Cipher) Decrypt(ciphertext []byte) ([]byte, error) {
+func (c *ChaCha20Cipher) Decrypt(ciphertext []byte) ([]byte, error) {
 	if len(ciphertext) < chacha20poly1305.Overhead {
-		return nil, fmt.Errorf("%w: need at least %d bytes", ErrCiphertextTooShort, chacha20poly1305.Overhead)
+		return nil, fmt.Errorf("ciphertext must be at least %d bytes long", chacha20poly1305.Overhead)
 	}
 
 	aead, err := chacha20poly1305.New(c.key)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrCipherCreationFailed, err)
+		return nil, fmt.Errorf("failed to create ChaCha20 cipher: %w", err)
 	}
 
 	nonce := c.nonce[:chacha20poly1305.NonceSize]
+
 	plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrDecryptionFailed, err)
+		return nil, fmt.Errorf("failed to decrypt ciphertext: %w", err)
 	}
 
 	return plaintext, nil
 }
 
-func (c *chaCha20Cipher) SetNonce(nonce []byte) error {
-	if len(nonce) != chaCha20NonceSize {
-		return fmt.Errorf("%w: expected %d bytes, got %d", ErrInvalidNonceSize, chaCha20NonceSize, len(nonce))
+func (c *ChaCha20Cipher) SetNonce(nonce []byte) error {
+	if len(nonce) != 24 {
+		return fmt.Errorf("invalid nonce size: %d bytes, expected %d bytes", len(nonce), 24)
 	}
 	c.nonce = nonce
 	return nil
 }
 
-func (c *chaCha20Cipher) GetNonce() []byte {
+func (c *ChaCha20Cipher) GetNonce() []byte {
 	return c.nonce
 }

@@ -76,8 +76,8 @@ func (cp *Operations) performEncryption(input *os.File, output *os.File, fileInf
 	builder, err := header.NewHeaderBuilder().
 		WithSalt(salt).
 		WithOriginalSize(uint64(fileInfo.Size())).
-		WithAesNonce(worker.GetPrimaryCipherNonce()).
-		WithChaCha20Nonce(worker.GetSecondaryCipherNonce()).
+		WithAesNonce(worker.GetAesNonce()).
+		WithChaCha20Nonce(worker.GetChaCha20Nonce()).
 		Build()
 	if err != nil {
 		return fmt.Errorf("header building failed: %w", err)
@@ -100,11 +100,11 @@ func (op *Operations) performDecryption(input *os.File, output *os.File, key []b
 		return fmt.Errorf("decryption processor creation failed: %w", err)
 	}
 
-	if err := worker.SetPrimaryCipherNonce(fileHeader.AesNonce.Value); err != nil {
+	if err := worker.SetAesNonce(fileHeader.AesNonce.Value); err != nil {
 		return fmt.Errorf("AES nonce setting failed: %w", err)
 	}
 
-	if err := worker.SetSecondaryCipherNonce(fileHeader.ChaCha20Nonce.Value); err != nil {
+	if err := worker.SetChaCha20Nonce(fileHeader.ChaCha20Nonce.Value); err != nil {
 		return fmt.Errorf("ChaCha20 nonce setting failed: %w", err)
 	}
 
