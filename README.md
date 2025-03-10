@@ -11,7 +11,7 @@ A secure and efficient file encryption tool written in Go that implements multi-
   - AES-GCM (Authenticated Encryption with Associated Data)
   - ChaCha20 stream cipher
   - Reed-Solomon error correction encoding
-- **Data Compression**: Utilizes zlib compression for efficient storage
+- **Data Compression**: Utilizes LZ4 compression for efficient storage
 - **Parallel Processing**: Leverages multi-core systems for faster encryption/decryption
 - **Progress Tracking**: Real-time progress bar for file operations
 - **Error Recovery**: Built-in error correction using Reed-Solomon encoding
