@@ -9,10 +9,8 @@ func Pad(data []byte) []byte {
 	binary.BigEndian.PutUint32(sizeHeader, uint32(len(data)))
 
 	alignedSize := (len(data) + 15) & ^15
-	if alignedSize > len(data) {
-		padding := make([]byte, alignedSize-len(data))
-		data = append(data, padding...)
-	}
+	paddedData := make([]byte, alignedSize)
+	copy(paddedData, data)
 
-	return append(sizeHeader, data...)
+	return append(sizeHeader, paddedData...)
 }
