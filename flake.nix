@@ -14,7 +14,6 @@
       ...
     }:
     let
-
       nixosModule =
         {
           config,
@@ -57,17 +56,11 @@
           };
         in
         {
-          packages = {
-            default = package;
-            go-encryption = package;
-          };
+          packages.default = package;
         };
     in
     flake-utils.lib.eachDefaultSystem perSystem
     // {
-      nixosModules = {
-        default = nixosModule;
-        go-encryption = nixosModule;
-      };
+      nixosModules.default = nixosModule;
     };
 }
