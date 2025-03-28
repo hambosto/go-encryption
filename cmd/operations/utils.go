@@ -67,7 +67,7 @@ func (op *Operations) handleCleanup(path string, isEncryption bool) error {
 	return nil
 }
 
-func (cp *Operations) performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, key []byte, salt []byte) error {
+func (op *Operations) performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, key []byte, salt []byte) error {
 	worker, err := worker.NewFileProcessor(key, true)
 	if err != nil {
 		return fmt.Errorf("encryption processor creation failed: %w", err)

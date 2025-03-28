@@ -4,7 +4,6 @@ go 1.24.1
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
-	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/klauspost/reedsolomon v1.12.4
 	github.com/pierrec/lz4/v4 v4.1.22
 	github.com/schollz/progressbar/v3 v3.18.0

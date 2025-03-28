@@ -10,23 +10,22 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/common-nighthawk/go-figure"
 	"github.com/hambosto/go-encryption/cmd/filemanager"
 	"github.com/hambosto/go-encryption/cmd/operations"
 )
 
-type Operation string
+type OperationType string
 
 const (
-	Encrypt      Operation = "Encrypt"
-	Decrypt      Operation = "Decrypt"
-	encExtension           = ".enc"
+	Encrypt      OperationType = "Encrypt"
+	Decrypt      OperationType = "Decrypt"
+	encExtension               = ".enc"
 )
 
 type FileProcessor struct {
 	fileManager *filemanager.FileManager
 	userPrompt  *filemanager.UserPrompt
-	processor   *operations.Operations
+	operation   *operations.Operations
 }
 
 func NewFileProcessor() *FileProcessor {
@@ -35,7 +34,7 @@ func NewFileProcessor() *FileProcessor {
 	return &FileProcessor{
 		fileManager: fileManager,
 		userPrompt:  userPrompt,
-		processor:   operations.NewOperation(fileManager, userPrompt),
+		operation:   operations.NewOperation(fileManager, userPrompt),
 	}
 }
 
@@ -51,9 +50,7 @@ func run() error {
 		return fmt.Errorf("failed to clear terminal: %w", err)
 	}
 
-	displayLogo()
-
-	op, err := promptOperation()
+	op, err := promptForOperation()
 	if err != nil {
 		return fmt.Errorf("failed to get operation: %w", err)
 	}
@@ -74,14 +71,10 @@ func run() error {
 	}
 
 	processor := NewFileProcessor()
-	return processor.process(selectedFile, op)
+	return processor.processFile(selectedFile, op)
 }
 
-func displayLogo() {
-	figure.NewColorFigure("Go-Encryption", "rectangles", "green", true).Print()
-}
-
-func promptOperation() (Operation, error) {
+func promptForOperation() (OperationType, error) {
 	var operationStr string
 	prompt := &survey.Select{
 		Message: "Select Operation:",
@@ -90,7 +83,7 @@ func promptOperation() (Operation, error) {
 	if err := survey.AskOne(prompt, &operationStr); err != nil {
 		return "", fmt.Errorf("operation selection failed: %w", err)
 	}
-	return Operation(operationStr), nil
+	return OperationType(operationStr), nil
 }
 
 func selectFile(files []string) (string, error) {
@@ -109,9 +102,9 @@ func selectFile(files []string) (string, error) {
 	return selectedFile, nil
 }
 
-func findEligibleFiles(op Operation) ([]string, error) {
-	finder := newFileFinder()
-	return finder.findEligibleFiles(op)
+func findEligibleFiles(op OperationType) ([]string, error) {
+	fileFinder := newFileFinder()
+	return fileFinder.findEligibleFiles(op)
 }
 
 type FileFinder struct {
@@ -126,7 +119,7 @@ func newFileFinder() *FileFinder {
 	}
 }
 
-func (f *FileFinder) findEligibleFiles(op Operation) ([]string, error) {
+func (f *FileFinder) findEligibleFiles(op OperationType) ([]string, error) {
 	var files []string
 	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -140,7 +133,7 @@ func (f *FileFinder) findEligibleFiles(op Operation) ([]string, error) {
 	return files, err
 }
 
-func (f *FileFinder) isFileEligible(path string, info os.FileInfo, op Operation) bool {
+func (f *FileFinder) isFileEligible(path string, info os.FileInfo, op OperationType) bool {
 	if info.IsDir() || strings.HasPrefix(info.Name(), ".") || f.shouldSkipPath(path) {
 		return false
 	}
@@ -178,26 +171,26 @@ func getClearCommand() (string, []string) {
 	}
 }
 
-func (fp *FileProcessor) process(input string, op Operation) error {
+func (fp *FileProcessor) processFile(input string, op OperationType) error {
 	config := operations.OperationConfig{
 		InputPath:  input,
 		OutputPath: determineOutputPath(input, op),
-		Operation:  mapOperation(op),
+		Operation:  mapOperationType(op),
 	}
-	if err := fp.processor.Process(config); err != nil {
+	if err := fp.operation.Process(config); err != nil {
 		return fmt.Errorf("%s failed: %w", strings.ToLower(string(op)), err)
 	}
 	return nil
 }
 
-func determineOutputPath(input string, op Operation) string {
+func determineOutputPath(input string, op OperationType) string {
 	if op == Encrypt {
 		return input + encExtension
 	}
 	return strings.TrimSuffix(input, encExtension)
 }
 
-func mapOperation(op Operation) operations.OperationType {
+func mapOperationType(op OperationType) operations.OperationType {
 	if op == Encrypt {
 		return operations.OperationEncrypt
 	}
