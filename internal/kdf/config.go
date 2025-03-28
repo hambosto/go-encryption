@@ -30,26 +30,20 @@ func (c *Config) Clone() *Config {
 }
 
 func (c *Config) validate() error {
-	var err []error
-
 	if c.Memory < 8*1024 {
-		err = append(err, fmt.Errorf("memory must be at least 8MB"))
+		return fmt.Errorf("%w: memory must be at least 8MB", ErrInvalidConfig)
 	}
 	if c.TimeCost < 1 {
-		err = append(err, fmt.Errorf("time cost must be at least 1"))
+		return fmt.Errorf("%w: time cost must be at least 1", ErrInvalidConfig)
 	}
 	if c.Threads < 1 {
-		err = append(err, fmt.Errorf("threads must be at least 1"))
+		return fmt.Errorf("%w: threads must be at least 1", ErrInvalidConfig)
 	}
 	if c.KeyLength < 16 {
-		err = append(err, fmt.Errorf("key length must be at least 16 bytes"))
+		return fmt.Errorf("%w: key length must be at least 16 bytes", ErrInvalidConfig)
 	}
 	if c.SaltLength < 16 {
-		err = append(err, fmt.Errorf("salt length must be at least 16 bytes"))
-	}
-
-	if len(err) > 0 {
-		return fmt.Errorf("%w: %v", ErrInvalidConfig, err)
+		return fmt.Errorf("%w: salt length must be at least 16 bytes", ErrInvalidConfig)
 	}
 	return nil
 }
