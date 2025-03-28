@@ -3,12 +3,12 @@ package processor
 import (
 	"fmt"
 
-	"github.com/hambosto/go-encryption/internal/compress"
+	"github.com/hambosto/go-encryption/internal/compression"
 	"github.com/hambosto/go-encryption/internal/padding"
 )
 
 func (p *Processor) encrypt(chunk []byte) ([]byte, error) {
-	compressedData, err := compress.CompressData(chunk)
+	compressedData, err := compression.CompressData(chunk)
 	if err != nil {
 		return nil, fmt.Errorf("Compression failed: %w", err)
 	}

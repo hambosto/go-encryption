@@ -1,4 +1,4 @@
-package compress
+package compression
 
 import (
 	"encoding/binary"
