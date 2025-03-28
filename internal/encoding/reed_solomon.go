@@ -18,7 +18,7 @@ type ReedSolomon struct {
 	encoder      reedsolomon.Encoder
 }
 
-func NewReedSolomon(config Config) (*ReedSolomon, error) {
+func NewReedSolomon(config ReedSolomonConfig) (*ReedSolomon, error) {
 	if err := validateConfig(config); err != nil {
 		return nil, err
 	}
@@ -113,7 +113,6 @@ func (r *ReedSolomon) joinShards(shards [][]byte) []byte {
 	}
 
 	return result
-
 }
 
 func (r *ReedSolomon) extractOriginalData(shards [][]byte) ([]byte, error) {

@@ -1,6 +1,8 @@
 package operations
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func (op *Operations) validateOperation(config OperationConfig) error {
 	if err := op.fileManager.Validate(config.InputPath, true); err != nil {

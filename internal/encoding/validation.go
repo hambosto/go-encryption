@@ -1,8 +1,10 @@
 package encoding
 
-import "fmt"
+import (
+	"fmt"
+)
 
-func validateConfig(config Config) error {
+func validateConfig(config ReedSolomonConfig) error {
 	if config.DataShards <= 0 {
 		return fmt.Errorf("data shards must be positive")
 	}

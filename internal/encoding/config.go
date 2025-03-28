@@ -1,6 +1,6 @@
 package encoding
 
-type Config struct {
+type ReedSolomonConfig struct {
 	DataShards   int
 	ParityShards int
 }

@@ -29,7 +29,7 @@ func NewProcessor(key []byte, isEncryption bool) (*Processor, error) {
 		return nil, fmt.Errorf("failed to create ChaCha20 cipher: %w", err)
 	}
 
-	reedSolomon, err := encoding.NewReedSolomon(encoding.Config{DataShards: 4, ParityShards: 10})
+	reedSolomon, err := encoding.NewReedSolomon(encoding.ReedSolomonConfig{DataShards: 4, ParityShards: 10})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Reed-Solomon encoder: %w", err)
 	}
