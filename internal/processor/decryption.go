@@ -6,18 +6,18 @@ import (
 	"github.com/hambosto/go-encryption/internal/compression"
 )
 
-func (p *Processor) decrypt(chunk []byte) ([]byte, error) {
-	decodedData, err := p.ReedSolomon.Decode(chunk)
+func (c *ChunkProcessor) decrypt(chunk []byte) ([]byte, error) {
+	decodedData, err := c.ReedSolomon.Decode(chunk)
 	if err != nil {
 		return nil, fmt.Errorf("reed-solomon decoding failed: %w", err)
 	}
 
-	chaCha20Decrypted, err := p.ChaCha20Cipher.Decrypt(decodedData)
+	chaCha20Decrypted, err := c.ChaCha20Cipher.Decrypt(decodedData)
 	if err != nil {
 		return nil, fmt.Errorf("ChaCha20 decryption failed: %w", err)
 	}
 
-	aesDecrypted, err := p.AESCipher.Decrypt(chaCha20Decrypted)
+	aesDecrypted, err := c.AESCipher.Decrypt(chaCha20Decrypted)
 	if err != nil {
 		return nil, fmt.Errorf("aes decryption failed: %w", err)
 	}

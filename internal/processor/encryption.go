@@ -7,7 +7,7 @@ import (
 	"github.com/hambosto/go-encryption/internal/padding"
 )
 
-func (p *Processor) encrypt(chunk []byte) ([]byte, error) {
+func (c *ChunkProcessor) encrypt(chunk []byte) ([]byte, error) {
 	compressedData, err := compression.CompressData(chunk)
 	if err != nil {
 		return nil, fmt.Errorf("Compression failed: %w", err)
@@ -15,17 +15,17 @@ func (p *Processor) encrypt(chunk []byte) ([]byte, error) {
 
 	paddedData := padding.Pad(compressedData)
 
-	aesEncrypted, err := p.AESCipher.Encrypt(paddedData)
+	aesEncrypted, err := c.AESCipher.Encrypt(paddedData)
 	if err != nil {
 		return nil, fmt.Errorf("AES encryption failed: %w", err)
 	}
 
-	chaCha20Encrypted, err := p.ChaCha20Cipher.Encrypt(aesEncrypted)
+	chaCha20Encrypted, err := c.ChaCha20Cipher.Encrypt(aesEncrypted)
 	if err != nil {
 		return nil, fmt.Errorf("ChaCha20 encryption failed: %w", err)
 	}
 
-	encoded, err := p.ReedSolomon.Encode(chaCha20Encrypted)
+	encoded, err := c.ReedSolomon.Encode(chaCha20Encrypted)
 	if err != nil {
 		return nil, fmt.Errorf("Reed-Solomon encoding failed: %w", err)
 	}
