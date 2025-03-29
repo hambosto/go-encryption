@@ -29,13 +29,7 @@ func (op *Operations) handleDecryption(config OperationConfig) error {
 		}
 	}
 
-	kdf, err := kdf.New(
-		kdf.WithMemory(128*1024), // 128 MB
-		kdf.WithTimeCost(6),
-		kdf.WithThreads(8),
-		kdf.WithKeyLength(64),
-		kdf.WithSaltLength(32),
-	)
+	kdf, err := kdf.NewBuilder().WithMemory(128 * 1024).WithTimeCost(6).WithThreads(8).WithKeyLength(64).WithSaltLength(32).Build()
 	if err != nil {
 		return fmt.Errorf("failed to create KDF: %v", err)
 	}
