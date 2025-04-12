@@ -7,60 +7,54 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-type KDF interface {
+// Deriver is the main interface for key derivation operations
+type Deriver interface {
 	DeriveKey(password, salt []byte) ([]byte, error)
 	GenerateSalt() ([]byte, error)
-	GetConfig() *Config
+	GetParameters() Parameters
 }
 
-type kdf struct {
-	config *Config
+// argon2Deriver implements the Deriver interface using Argon2id
+type argon2Deriver struct {
+	params Parameters
 }
 
-func newKDF(config *Config) KDF {
-	return &kdf{config: config}
-}
+// DeriveKey generates a key from a password and salt
+func (d *argon2Deriver) DeriveKey(password, salt []byte) ([]byte, error) {
+	if len(password) == 0 {
+		return nil, ErrEmptyPassword
+	}
 
-func (k *kdf) DeriveKey(password, salt []byte) ([]byte, error) {
-	if err := k.validateInput(password, salt); err != nil {
-		return nil, fmt.Errorf("invalid input: %w", err)
+	if uint32(len(salt)) != d.params.SaltBytes {
+		return nil, fmt.Errorf("%w: expected %d, got %d",
+			ErrInvalidSaltLength,
+			d.params.SaltBytes,
+			len(salt))
 	}
 
 	key := argon2.IDKey(
 		password,
 		salt,
-		k.config.GetTimeCost(),
-		k.config.GetMemory(),
-		k.config.GetThreads(),
-		k.config.GetKeyLength(),
+		d.params.Iterations,
+		d.params.MemoryMB*1024, // Convert MB to KB
+		d.params.Parallelism,
+		d.params.KeyBytes,
 	)
 
 	return key, nil
 }
 
-func (k *kdf) GenerateSalt() ([]byte, error) {
-	salt := make([]byte, k.config.GetSaltLength())
-	if _, err := rand.Read(salt); err != nil {
-		return nil, fmt.Errorf("failed to generate salt: %w", err)
+// GenerateSalt creates a cryptographically secure random salt
+func (d *argon2Deriver) GenerateSalt() ([]byte, error) {
+	salt := make([]byte, d.params.SaltBytes)
+	_, err := rand.Read(salt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate random salt: %w", err)
 	}
 	return salt, nil
 }
 
-func (k *kdf) GetConfig() *Config {
-	return k.config.Clone()
-}
-
-func (k *kdf) validateInput(password, salt []byte) error {
-	if len(password) == 0 {
-		return ErrEmptyPassword
-	}
-
-	if len(salt) != int(k.config.GetSaltLength()) {
-		return fmt.Errorf("%w: expected %d, got %d",
-			ErrInvalidSaltLength,
-			k.config.GetSaltLength(),
-			len(salt))
-	}
-
-	return nil
+// GetParameters returns a copy of the current parameters
+func (d *argon2Deriver) GetParameters() Parameters {
+	return d.params
 }

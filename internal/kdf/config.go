@@ -5,75 +5,63 @@ import (
 	"fmt"
 )
 
+// Common errors
 var (
 	ErrEmptyPassword     = errors.New("password cannot be empty")
-	ErrInvalidSaltLength = errors.New("invalid salt length")
-	ErrInvalidConfig     = errors.New("invalid configuration")
+	ErrInvalidSaltLength = errors.New("salt length doesn't match configuration")
+	ErrInvalidParameters = errors.New("invalid parameters")
 )
 
-type Config struct {
-	memory     uint32
-	timeCost   uint32
-	threads    uint8
-	keyLength  uint32
-	saltLength uint32
+// Parameters holds the configuration for the key derivation function
+type Parameters struct {
+	MemoryMB    uint32 // Memory usage in MB
+	Iterations  uint32 // Time cost
+	Parallelism uint8  // Number of threads
+	KeyBytes    uint32 // Output key length in bytes
+	SaltBytes   uint32 // Salt length in bytes
 }
 
-func NewConfig() *Config {
-	return &Config{
-		memory:     64 * 1024,
-		timeCost:   4,
-		threads:    4,
-		keyLength:  64,
-		saltLength: 32,
-	}
-}
-
-func (c *Config) Clone() *Config {
-	return &Config{
-		memory:     c.memory,
-		timeCost:   c.timeCost,
-		threads:    c.threads,
-		keyLength:  c.keyLength,
-		saltLength: c.saltLength,
+// DefaultParameters returns the recommended secure parameters
+func DefaultParameters() Parameters {
+	return Parameters{
+		MemoryMB:    64, // 64MB
+		Iterations:  4,  // 4 iterations
+		Parallelism: 4,  // 4 threads
+		KeyBytes:    64, // 64 byte key
+		SaltBytes:   32, // 32 byte salt
 	}
 }
 
-func (c *Config) Validate() error {
-	if c.memory < 8*1024 {
-		return fmt.Errorf("%w: memory must be at least 8MB", ErrInvalidConfig)
+// MinimumParameters returns the minimum acceptable parameters
+func MinimumParameters() Parameters {
+	return Parameters{
+		MemoryMB:    8,  // 8MB minimum
+		Iterations:  1,  // At least 1 iteration
+		Parallelism: 1,  // At least 1 thread
+		KeyBytes:    16, // At least 16 byte key
+		SaltBytes:   16, // At least 16 byte salt
 	}
-	if c.timeCost < 1 {
-		return fmt.Errorf("%w: time cost must be at least 1", ErrInvalidConfig)
+}
+
+// Validate checks if parameters are acceptable
+func (p Parameters) Validate() error {
+	min := MinimumParameters()
+
+	if p.MemoryMB < min.MemoryMB {
+		return fmt.Errorf("%w: memory must be at least %d MB", ErrInvalidParameters, min.MemoryMB)
 	}
-	if c.threads < 1 {
-		return fmt.Errorf("%w: threads must be at least 1", ErrInvalidConfig)
+	if p.Iterations < min.Iterations {
+		return fmt.Errorf("%w: iterations must be at least %d", ErrInvalidParameters, min.Iterations)
 	}
-	if c.keyLength < 16 {
-		return fmt.Errorf("%w: key length must be at least 16 bytes", ErrInvalidConfig)
+	if p.Parallelism < min.Parallelism {
+		return fmt.Errorf("%w: parallelism must be at least %d", ErrInvalidParameters, min.Parallelism)
 	}
-	if c.saltLength < 16 {
-		return fmt.Errorf("%w: salt length must be at least 16 bytes", ErrInvalidConfig)
+	if p.KeyBytes < min.KeyBytes {
+		return fmt.Errorf("%w: key length must be at least %d bytes", ErrInvalidParameters, min.KeyBytes)
 	}
+	if p.SaltBytes < min.SaltBytes {
+		return fmt.Errorf("%w: salt length must be at least %d bytes", ErrInvalidParameters, min.SaltBytes)
+	}
+
 	return nil
-}
-
-func (c *Config) GetMemory() uint32 {
-	return c.memory
-}
-
-func (c *Config) GetTimeCost() uint32 {
-	return c.timeCost
-}
-
-func (c *Config) GetThreads() uint8 {
-	return c.threads
-}
-
-func (c *Config) GetKeyLength() uint32 {
-	return c.keyLength
-}
-
-func (c *Config) GetSaltLength() uint32 {
-	return c.saltLength
 }

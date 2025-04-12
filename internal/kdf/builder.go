@@ -1,44 +1,60 @@
 package kdf
 
+// Builder is used to configure and create a Deriver
 type Builder struct {
-	config *Config
+	params Parameters
 }
 
+// NewBuilder creates a Builder with default parameters
 func NewBuilder() *Builder {
 	return &Builder{
-		config: NewConfig(),
+		params: DefaultParameters(),
 	}
 }
 
-func (b *Builder) WithMemory(memory uint32) *Builder {
-	b.config.memory = memory
+// WithMemory sets the memory usage in MB
+func (b *Builder) WithMemory(memoryMB uint32) *Builder {
+	b.params.MemoryMB = memoryMB
 	return b
 }
 
-func (b *Builder) WithTimeCost(timeCost uint32) *Builder {
-	b.config.timeCost = timeCost
+// WithIterations sets the time cost parameter
+func (b *Builder) WithIterations(iterations uint32) *Builder {
+	b.params.Iterations = iterations
 	return b
 }
 
-func (b *Builder) WithThreads(threads uint8) *Builder {
-	b.config.threads = threads
+// WithParallelism sets the number of threads to use
+func (b *Builder) WithParallelism(threads uint8) *Builder {
+	b.params.Parallelism = threads
 	return b
 }
 
-func (b *Builder) WithKeyLength(keyLength uint32) *Builder {
-	b.config.keyLength = keyLength
+// WithKeyLength sets the output key length in bytes
+func (b *Builder) WithKeyLength(keyBytes uint32) *Builder {
+	b.params.KeyBytes = keyBytes
 	return b
 }
 
-func (b *Builder) WithSaltLength(saltLength uint32) *Builder {
-	b.config.saltLength = saltLength
+// WithSaltLength sets the salt length in bytes
+func (b *Builder) WithSaltLength(saltBytes uint32) *Builder {
+	b.params.SaltBytes = saltBytes
 	return b
 }
 
-func (b *Builder) Build() (KDF, error) {
-	if err := b.config.Validate(); err != nil {
+// WithParameters sets all parameters at once
+func (b *Builder) WithParameters(params Parameters) *Builder {
+	b.params = params
+	return b
+}
+
+// Build creates and returns a new Deriver with the configured parameters
+func (b *Builder) Build() (Deriver, error) {
+	if err := b.params.Validate(); err != nil {
 		return nil, err
 	}
 
-	return newKDF(b.config.Clone()), nil
+	return &argon2Deriver{
+		params: b.params,
+	}, nil
 }
