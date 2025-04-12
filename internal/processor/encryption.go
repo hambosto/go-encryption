@@ -1,10 +1,10 @@
 package processor
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/hambosto/go-encryption/internal/compression"
-	"github.com/hambosto/go-encryption/internal/padding"
 )
 
 func (c *ChunkProcessor) encrypt(chunk []byte) ([]byte, error) {
@@ -13,9 +13,16 @@ func (c *ChunkProcessor) encrypt(chunk []byte) ([]byte, error) {
 		return nil, fmt.Errorf("Compression failed: %w", err)
 	}
 
-	paddedData := padding.Pad(compressedData)
+	sizeHeader := make([]byte, 4)
+	binary.BigEndian.PutUint32(sizeHeader, uint32(len(compressedData)))
+	fullPayload := append(sizeHeader, compressedData...)
 
-	aesEncrypted, err := c.AESCipher.Encrypt(paddedData)
+	// Pad to 16-byte boundary
+	alignedSize := (len(fullPayload) + 15) & ^15
+	paddedPayload := make([]byte, alignedSize)
+	copy(paddedPayload, fullPayload)
+
+	aesEncrypted, err := c.AESCipher.Encrypt(paddedPayload)
 	if err != nil {
 		return nil, fmt.Errorf("AES encryption failed: %w", err)
 	}
