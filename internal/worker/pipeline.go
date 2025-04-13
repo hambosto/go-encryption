@@ -31,7 +31,7 @@ func (f *FileProcessor) executePipeline(r io.Reader, w io.Writer) error {
 	close(jobs)
 
 	// Wait for all workers to finish
-	for i := 0; i < f.workerCount; i++ {
+	for range f.workerCount {
 		<-done
 	}
 
