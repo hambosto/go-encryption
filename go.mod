@@ -5,7 +5,6 @@ go 1.24.1
 require (
 	github.com/charmbracelet/huh v0.6.0
 	github.com/klauspost/reedsolomon v1.12.4
-	github.com/pierrec/lz4/v4 v4.1.22
 	github.com/schollz/progressbar/v3 v3.18.0
 	golang.org/x/crypto v0.37.0
 )

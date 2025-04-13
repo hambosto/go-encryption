@@ -1,19 +1,29 @@
 package compression
 
 import (
+	"bytes"
+	"compress/zlib"
 	"fmt"
-
-	"github.com/pierrec/lz4/v4"
 )
 
 func CompressData(data []byte) ([]byte, error) {
-	maxCompressedSize := lz4.CompressBlockBound(len(data))
-	compressed := make([]byte, maxCompressedSize)
+	var buf bytes.Buffer
 
-	compressedSize, err := lz4.CompressBlock(data, compressed, nil)
+	// Create a zlib writer with best compression
+	w, err := zlib.NewWriterLevel(&buf, zlib.BestCompression)
 	if err != nil {
-		return nil, fmt.Errorf("failed to compress data with lz4: %w", err)
+		return nil, fmt.Errorf("failed to create zlib writer: %w", err)
 	}
 
-	return compressed[:compressedSize], nil
+	// Write data to the compressor
+	if _, err := w.Write(data); err != nil {
+		return nil, fmt.Errorf("failed to write data to zlib compressor: %w", err)
+	}
+
+	// Close the writer to flush any pending data
+	if err := w.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close zlib writer: %w", err)
+	}
+
+	return buf.Bytes(), nil
 }

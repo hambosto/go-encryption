@@ -1,10 +1,11 @@
 package compression
 
 import (
+	"bytes"
+	"compress/zlib"
 	"encoding/binary"
 	"fmt"
-
-	"github.com/pierrec/lz4/v4"
+	"io"
 )
 
 func DecompressData(data []byte) ([]byte, error) {
@@ -24,18 +25,18 @@ func DecompressData(data []byte) ([]byte, error) {
 }
 
 func decompress(compressedData []byte) ([]byte, error) {
-	initialSize := len(compressedData) * 4
-	decompressed := make([]byte, initialSize)
-
-	n, err := lz4.UncompressBlock(compressedData, decompressed)
-	if err == lz4.ErrInvalidSourceShortBuffer {
-		decompressed = make([]byte, initialSize*2)
-		n, err = lz4.UncompressBlock(compressedData, decompressed)
-	}
-
+	// Create a zlib reader for the compressed data
+	r, err := zlib.NewReader(bytes.NewReader(compressedData))
 	if err != nil {
-		return nil, fmt.Errorf("failed to decompress data with lz4: %w", err)
+		return nil, fmt.Errorf("failed to create zlib reader: %w", err)
+	}
+	defer r.Close()
+
+	// Read all the decompressed data
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		return nil, fmt.Errorf("failed to decompress data with zlib: %w", err)
 	}
 
-	return decompressed[:n], nil
+	return buf.Bytes(), nil
 }
