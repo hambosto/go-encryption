@@ -7,7 +7,7 @@ require (
 	github.com/klauspost/reedsolomon v1.12.4
 	github.com/pierrec/lz4/v4 v4.1.22
 	github.com/schollz/progressbar/v3 v3.18.0
-	golang.org/x/crypto v0.36.0
+	golang.org/x/crypto v0.37.0
 )
 
 require (
@@ -18,7 +18,7 @@ require (
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/term v0.30.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/term v0.31.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 )

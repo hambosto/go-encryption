@@ -1,21 +1,21 @@
-package filemanager
+package ui
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/hambosto/go-encryption/internal/core"
 )
 
-type UserPrompt struct {
-	fm *FileManager
+type Prompt struct{}
+
+func NewPrompt() *Prompt {
+	return &Prompt{}
 }
 
-func NewUserPrompt(fm *FileManager) *UserPrompt {
-	return &UserPrompt{fm: fm}
-}
-
-func (up *UserPrompt) ConfirmOverwrite(path string) (bool, error) {
+func (p *Prompt) ConfirmOverwrite(path string) (bool, error) {
 	var result bool
 	prompt := &survey.Confirm{
 		Message: fmt.Sprintf("Output file %s already exists. Overwrite?", path),
@@ -30,7 +30,7 @@ func (up *UserPrompt) ConfirmOverwrite(path string) (bool, error) {
 	return result, nil
 }
 
-func (up *UserPrompt) GetPassword() (string, error) {
+func (p *Prompt) GetPassword() (string, error) {
 	var password string
 	passwordPrompt := &survey.Password{
 		Message: "Enter password:",
@@ -58,10 +58,10 @@ func (up *UserPrompt) GetPassword() (string, error) {
 	return password, nil
 }
 
-func (up *UserPrompt) ConfirmDelete(path string, prompt string) (bool, DeleteType, error) {
+func (p *Prompt) ConfirmDelete(path string, promptMsg string) (bool, core.DeleteType, error) {
 	var result bool
 	confirmPrompt := &survey.Confirm{
-		Message: fmt.Sprintf("%s %s", prompt, path),
+		Message: fmt.Sprintf("%s %s", promptMsg, path),
 		Default: false,
 	}
 
@@ -78,8 +78,8 @@ func (up *UserPrompt) ConfirmDelete(path string, prompt string) (bool, DeleteTyp
 	typeSelect := &survey.Select{
 		Message: "Select delete type",
 		Options: []string{
-			string(DeleteTypeNormal),
-			string(DeleteTypeSecure),
+			string(core.DeleteTypeNormal),
+			string(core.DeleteTypeSecure),
 		},
 	}
 
@@ -88,5 +88,33 @@ func (up *UserPrompt) ConfirmDelete(path string, prompt string) (bool, DeleteTyp
 		return false, "", err
 	}
 
-	return true, DeleteType(deleteType), nil
+	return true, core.DeleteType(deleteType), nil
+}
+
+func (p *Prompt) GetOperation() (core.OperationType, error) {
+	var operationStr string
+	prompt := &survey.Select{
+		Message: "Select Operation:",
+		Options: []string{string(core.Encrypt), string(core.Decrypt)},
+	}
+	if err := survey.AskOne(prompt, &operationStr); err != nil {
+		return "", fmt.Errorf("operation selection failed: %w", err)
+	}
+	return core.OperationType(operationStr), nil
+}
+
+func (p *Prompt) SelectFile(files []string) (string, error) {
+	if len(files) == 0 {
+		return "", errors.New("no files available for selection")
+	}
+
+	var selectedFile string
+	prompt := &survey.Select{
+		Message: "Select file:",
+		Options: files,
+	}
+	if err := survey.AskOne(prompt, &selectedFile); err != nil {
+		return "", fmt.Errorf("file selection failed: %w", err)
+	}
+	return selectedFile, nil
 }

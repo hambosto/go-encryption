@@ -19,13 +19,13 @@ func (c *ChunkProcessor) decrypt(chunk []byte) ([]byte, error) {
 
 	aesDecrypted, err := c.AESCipher.Decrypt(chaCha20Decrypted)
 	if err != nil {
-		return nil, fmt.Errorf("aes decryption failed: %w", err)
+		return nil, fmt.Errorf("AES decryption failed: %w", err)
 	}
 
-	zlibDecompressed, err := compression.DecompressData(aesDecrypted)
+	decompressedData, err := compression.DecompressData(aesDecrypted)
 	if err != nil {
 		return nil, fmt.Errorf("zlib decompression failed: %w", err)
 	}
 
-	return zlibDecompressed, nil
+	return decompressedData, nil
 }

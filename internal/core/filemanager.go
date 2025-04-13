@@ -1,8 +1,17 @@
-package filemanager
+package core
 
 import (
 	"fmt"
 	"os"
+
+	"github.com/hambosto/go-encryption/pkg/trash"
+)
+
+type DeleteType string
+
+const (
+	DeleteTypeNormal DeleteType = "Normal delete (faster, but recoverable)"
+	DeleteTypeSecure DeleteType = "Secure delete (slower, but unrecoverable)"
 )
 
 type FileManager struct {
@@ -23,7 +32,7 @@ func (fm *FileManager) Delete(path string, deleteType DeleteType) error {
 	case DeleteTypeNormal:
 		return os.Remove(path)
 	case DeleteTypeSecure:
-		return fm.secureDelete(path)
+		return trash.SecureDelete(path, fm.overwritePasses)
 	default:
 		return fmt.Errorf("invalid delete type: %s", deleteType)
 	}
@@ -58,4 +67,19 @@ func (fm *FileManager) Validate(path string, shouldExist bool) error {
 	}
 
 	return nil
+}
+
+func (fm *FileManager) OpenInputFile(path string) (*os.File, os.FileInfo, error) {
+	input, err := os.Open(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open input file: %w", err)
+	}
+
+	info, err := input.Stat()
+	if err != nil {
+		input.Close()
+		return nil, nil, fmt.Errorf("failed to get file info: %w", err)
+	}
+
+	return input, info, nil
 }
