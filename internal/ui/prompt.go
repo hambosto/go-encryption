@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/AlecAivazis/survey/v2"
+	"github.com/charmbracelet/huh"
 	"github.com/hambosto/go-encryption/internal/core"
 )
 
@@ -17,55 +17,50 @@ func NewPrompt() *Prompt {
 
 func (p *Prompt) ConfirmOverwrite(path string) (bool, error) {
 	var result bool
-	prompt := &survey.Confirm{
-		Message: fmt.Sprintf("Output file %s already exists. Overwrite?", path),
-		Default: false,
-	}
-
-	err := survey.AskOne(prompt, &result)
+	err := huh.NewConfirm().
+		Title(fmt.Sprintf("Output file %s already exists. Overwrite?", path)).
+		Value(&result).
+		Run()
 	if err != nil {
 		return false, err
 	}
-
 	return result, nil
 }
 
 func (p *Prompt) GetPassword() (string, error) {
 	var password string
-	passwordPrompt := &survey.Password{
-		Message: "Enter password:",
-	}
+	var confirm string
 
-	err := survey.AskOne(passwordPrompt, &password)
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Enter password:").
+				EchoMode(huh.EchoModePassword).
+				Value(&password),
+			huh.NewInput().
+				Title("Confirm password:").
+				EchoMode(huh.EchoModePassword).
+				Value(&confirm),
+		),
+	)
+
+	err := form.Run()
 	if err != nil {
 		return "", fmt.Errorf("failed to get password: %w", err)
-	}
-
-	var confirm string
-	confirmPrompt := &survey.Password{
-		Message: "Confirm password:",
-	}
-
-	err = survey.AskOne(confirmPrompt, &confirm)
-	if err != nil {
-		return "", fmt.Errorf("failed to get password confirmation: %w", err)
 	}
 
 	if !bytes.Equal([]byte(password), []byte(confirm)) {
 		return "", fmt.Errorf("passwords do not match")
 	}
-
 	return password, nil
 }
 
 func (p *Prompt) ConfirmDelete(path string, promptMsg string) (bool, core.DeleteType, error) {
 	var result bool
-	confirmPrompt := &survey.Confirm{
-		Message: fmt.Sprintf("%s %s", promptMsg, path),
-		Default: false,
-	}
-
-	err := survey.AskOne(confirmPrompt, &result)
+	err := huh.NewConfirm().
+		Title(fmt.Sprintf("%s %s", promptMsg, path)).
+		Value(&result).
+		Run()
 	if err != nil {
 		return false, "", err
 	}
@@ -75,15 +70,18 @@ func (p *Prompt) ConfirmDelete(path string, promptMsg string) (bool, core.Delete
 	}
 
 	var deleteType string
-	typeSelect := &survey.Select{
-		Message: "Select delete type",
-		Options: []string{
-			string(core.DeleteTypeNormal),
-			string(core.DeleteTypeSecure),
-		},
+	deleteOptions := []string{
+		string(core.DeleteTypeNormal),
+		string(core.DeleteTypeSecure),
 	}
 
-	err = survey.AskOne(typeSelect, &deleteType)
+	err = huh.NewSelect[string]().
+		Title("Select delete type").
+		Options(
+			huh.NewOptions(deleteOptions...)...,
+		).
+		Value(&deleteType).
+		Run()
 	if err != nil {
 		return false, "", err
 	}
@@ -92,15 +90,24 @@ func (p *Prompt) ConfirmDelete(path string, promptMsg string) (bool, core.Delete
 }
 
 func (p *Prompt) GetOperation() (core.OperationType, error) {
-	var operationStr string
-	prompt := &survey.Select{
-		Message: "Select Operation:",
-		Options: []string{string(core.Encrypt), string(core.Decrypt)},
+	var operationType string
+	operationOptions := []string{
+		string(core.Encrypt),
+		string(core.Decrypt),
 	}
-	if err := survey.AskOne(prompt, &operationStr); err != nil {
+
+	err := huh.NewSelect[string]().
+		Title("Select Operation:").
+		Options(
+			huh.NewOptions(operationOptions...)...,
+		).
+		Value(&operationType).
+		Run()
+	if err != nil {
 		return "", fmt.Errorf("operation selection failed: %w", err)
 	}
-	return core.OperationType(operationStr), nil
+
+	return core.OperationType(operationType), nil
 }
 
 func (p *Prompt) SelectFile(files []string) (string, error) {
@@ -109,12 +116,17 @@ func (p *Prompt) SelectFile(files []string) (string, error) {
 	}
 
 	var selectedFile string
-	prompt := &survey.Select{
-		Message: "Select file:",
-		Options: files,
-	}
-	if err := survey.AskOne(prompt, &selectedFile); err != nil {
+
+	err := huh.NewSelect[string]().
+		Title("Select file:").
+		Options(
+			huh.NewOptions(files...)...,
+		).
+		Value(&selectedFile).
+		Run()
+	if err != nil {
 		return "", fmt.Errorf("file selection failed: %w", err)
 	}
+
 	return selectedFile, nil
 }
