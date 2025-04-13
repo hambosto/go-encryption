@@ -9,12 +9,17 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
+// ChunkSize defines the size of data chunks to process
+const ChunkSize = 1024 * 1024 // 1MB
+
+// FileProcessor handles the concurrent processing of file chunks
 type FileProcessor struct {
 	chunkProcessor *processor.ChunkProcessor
 	progressBar    *progressbar.ProgressBar
 	workerCount    int
 }
 
+// NewFileProcessor creates a new file processor with the given key and operation mode
 func NewFileProcessor(key []byte, isEncryption bool) (*FileProcessor, error) {
 	if len(key) != 64 {
 		return nil, fmt.Errorf("invalid key size: must be %d bytes", 64)

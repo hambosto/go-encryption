@@ -71,3 +71,49 @@ func (f *FileProcessor) sendJob(jobs chan<- Job, job Job, errChan chan error) er
 		return fmt.Errorf("failed to enqueue chunk: %w", err)
 	}
 }
+
+func (f *FileProcessor) processJobs(jobs <-chan Job, results chan<- Result, done chan<- struct{}) {
+	for job := range jobs {
+		processed, err := f.chunkProcessor.ProcessChunk(job.Data)
+		size := len(processed)
+		if f.chunkProcessor.IsEncryption {
+			size = len(job.Data)
+		}
+
+		results <- Result{
+			Index: job.Index,
+			Data:  processed,
+			Size:  size,
+			Error: err,
+		}
+	}
+	done <- struct{}{}
+}
+
+func (f *FileProcessor) writeResult(w io.Writer, result Result) error {
+	if f.chunkProcessor.IsEncryption {
+		if err := f.writeChunkSize(w, len(result.Data)); err != nil {
+			return err
+		}
+	}
+
+	if _, err := w.Write(result.Data); err != nil {
+		return fmt.Errorf("failed to write chunk data: %w", err)
+	}
+
+	if err := f.progressBar.Add(result.Size); err != nil {
+		return fmt.Errorf("failed to update progress bar: %w", err)
+	}
+
+	return nil
+}
+
+func (f *FileProcessor) writeChunkSize(w io.Writer, size int) error {
+	sizeBuffer := make([]byte, 4)
+	binary.BigEndian.PutUint32(sizeBuffer, uint32(size))
+
+	if _, err := w.Write(sizeBuffer); err != nil {
+		return fmt.Errorf("failed to write chunk size: %w", err)
+	}
+	return nil
+}
