@@ -72,7 +72,7 @@
             pname = "go-encryption";
             version = "1.0";
             src = ./.;
-            vendorHash = "sha256-VdyPNNTzNHm0yiCV6tgu+KxDFZTR/mvnPINok4Lcbvc=";
+            vendorHash = "sha256-M36JCPN+phTS5xhm5TUV/ru0lcW8uSsB9eVae3Ezwf8=";
             env.CGO_ENABLED = 0;
             ldflags = [
               "-extldflags '-static'"
