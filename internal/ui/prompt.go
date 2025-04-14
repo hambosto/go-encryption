@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/charmbracelet/huh"
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/hambosto/go-encryption/internal/core"
 )
 
@@ -17,10 +17,10 @@ func NewPrompt() *Prompt {
 
 func (p *Prompt) ConfirmOverwrite(path string) (bool, error) {
 	var result bool
-	err := huh.NewConfirm().
-		Title(fmt.Sprintf("Output file %s already exists. Overwrite?", path)).
-		Value(&result).
-		Run()
+	prompt := &survey.Confirm{
+		Message: fmt.Sprintf("Output file %s already exists. Overwrite?", path),
+	}
+	err := survey.AskOne(prompt, &result)
 	if err != nil {
 		return false, err
 	}
@@ -31,23 +31,33 @@ func (p *Prompt) GetPassword() (string, error) {
 	var password string
 	var confirm string
 
-	form := huh.NewForm(
-		huh.NewGroup(
-			huh.NewInput().
-				Title("Enter password:").
-				EchoMode(huh.EchoModePassword).
-				Value(&password),
-			huh.NewInput().
-				Title("Confirm password:").
-				EchoMode(huh.EchoModePassword).
-				Value(&confirm),
-		),
-	)
+	questions := []*survey.Question{
+		{
+			Name: "password",
+			Prompt: &survey.Password{
+				Message: "Enter password:",
+			},
+		},
+		{
+			Name: "confirm",
+			Prompt: &survey.Password{
+				Message: "Confirm password:",
+			},
+		},
+	}
 
-	err := form.Run()
+	answers := struct {
+		Password string
+		Confirm  string
+	}{}
+
+	err := survey.Ask(questions, &answers)
 	if err != nil {
 		return "", fmt.Errorf("failed to get password: %w", err)
 	}
+
+	password = answers.Password
+	confirm = answers.Confirm
 
 	if !bytes.Equal([]byte(password), []byte(confirm)) {
 		return "", fmt.Errorf("passwords do not match")
@@ -57,31 +67,27 @@ func (p *Prompt) GetPassword() (string, error) {
 
 func (p *Prompt) ConfirmDelete(path string, promptMsg string) (bool, core.DeleteType, error) {
 	var result bool
-	err := huh.NewConfirm().
-		Title(fmt.Sprintf("%s %s", promptMsg, path)).
-		Value(&result).
-		Run()
+	prompt := &survey.Confirm{
+		Message: fmt.Sprintf("%s %s", promptMsg, path),
+	}
+	err := survey.AskOne(prompt, &result)
 	if err != nil {
 		return false, "", err
 	}
-
 	if !result {
 		return false, "", nil
 	}
 
-	var deleteType string
 	deleteOptions := []string{
 		string(core.DeleteTypeNormal),
 		string(core.DeleteTypeSecure),
 	}
-
-	err = huh.NewSelect[string]().
-		Title("Select delete type").
-		Options(
-			huh.NewOptions(deleteOptions...)...,
-		).
-		Value(&deleteType).
-		Run()
+	var deleteType string
+	deletePrompt := &survey.Select{
+		Message: "Select delete type",
+		Options: deleteOptions,
+	}
+	err = survey.AskOne(deletePrompt, &deleteType)
 	if err != nil {
 		return false, "", err
 	}
@@ -90,23 +96,19 @@ func (p *Prompt) ConfirmDelete(path string, promptMsg string) (bool, core.Delete
 }
 
 func (p *Prompt) GetOperation() (core.OperationType, error) {
-	var operationType string
 	operationOptions := []string{
 		string(core.Encrypt),
 		string(core.Decrypt),
 	}
-
-	err := huh.NewSelect[string]().
-		Title("Select Operation:").
-		Options(
-			huh.NewOptions(operationOptions...)...,
-		).
-		Value(&operationType).
-		Run()
+	var operationType string
+	prompt := &survey.Select{
+		Message: "Select Operation:",
+		Options: operationOptions,
+	}
+	err := survey.AskOne(prompt, &operationType)
 	if err != nil {
 		return "", fmt.Errorf("operation selection failed: %w", err)
 	}
-
 	return core.OperationType(operationType), nil
 }
 
@@ -116,17 +118,13 @@ func (p *Prompt) SelectFile(files []string) (string, error) {
 	}
 
 	var selectedFile string
-
-	err := huh.NewSelect[string]().
-		Title("Select file:").
-		Options(
-			huh.NewOptions(files...)...,
-		).
-		Value(&selectedFile).
-		Run()
+	prompt := &survey.Select{
+		Message: "Select file:",
+		Options: files,
+	}
+	err := survey.AskOne(prompt, &selectedFile)
 	if err != nil {
 		return "", fmt.Errorf("file selection failed: %w", err)
 	}
-
 	return selectedFile, nil
 }
