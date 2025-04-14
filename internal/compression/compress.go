@@ -10,7 +10,7 @@ func CompressData(data []byte) ([]byte, error) {
 	var buf bytes.Buffer
 
 	// Create a zlib writer with best compression
-	w, err := zlib.NewWriterLevel(&buf, zlib.BestCompression)
+	w, err := zlib.NewWriterLevel(&buf, zlib.BestSpeed)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create zlib writer: %w", err)
 	}
