@@ -124,12 +124,7 @@ func (op *Operations) performEncryption(input *os.File, output *os.File, fileInf
 		return fmt.Errorf("encryption processor creation failed: %w", err)
 	}
 
-	headerBuilder, err := header.NewHeaderBuilder().
-		WithSalt(salt).
-		WithOriginalSize(uint64(fileInfo.Size())).
-		WithAesNonce(processor.GetAesNonce()).
-		WithChaCha20Nonce(processor.GetChaCha20Nonce()).
-		Build()
+	headerBuilder, err := header.NewHeaderBuilder().WithSalt(salt).WithOriginalSize(uint64(fileInfo.Size())).WithAesNonce(processor.GetAesNonce()).WithChaCha20Nonce(processor.GetChaCha20Nonce()).Build()
 	if err != nil {
 		return fmt.Errorf("header building failed: %w", err)
 	}
@@ -229,13 +224,7 @@ func (op *Operations) handleDecryption(config OperationConfig) error {
 		}
 	}
 
-	kdfBuilder, err := kdf.NewBuilder().
-		WithMemory(128).
-		WithIterations(6).
-		WithParallelism(8).
-		WithKeyLength(64).
-		WithSaltLength(32).
-		Build()
+	kdfBuilder, err := kdf.NewBuilder().WithMemory(128).WithIterations(6).WithParallelism(8).WithKeyLength(64).WithSaltLength(32).Build()
 	if err != nil {
 		return fmt.Errorf("failed to create KDF: %v", err)
 	}
