@@ -113,12 +113,12 @@ func (op *Operations) handleCleanup(path string, isEncryption bool) error {
 }
 
 func (op *Operations) performEncryption(input *os.File, output *os.File, fileInfo os.FileInfo, key []byte, salt []byte) error {
-	processor, err := worker.NewFileProcessor(key, true)
+	processor, err := worker.NewWorkerStream(key, true)
 	if err != nil {
 		return fmt.Errorf("encryption processor creation failed: %w", err)
 	}
 
-	headerBuilder, err := header.NewHeaderBuilder().WithSalt(salt).WithOriginalSize(uint64(fileInfo.Size())).WithAesNonce(processor.GetAesNonce()).WithChaCha20Nonce(processor.GetChaCha20Nonce()).Build()
+	headerBuilder, err := header.NewHeaderBuilder().WithSalt(salt).WithOriginalSize(uint64(fileInfo.Size())).WithAesNonce(processor.GetAESNonce()).WithChaCha20Nonce(processor.GetChaCha20Nonce()).Build()
 	if err != nil {
 		return fmt.Errorf("header building failed: %w", err)
 	}
@@ -135,12 +135,12 @@ func (op *Operations) performEncryption(input *os.File, output *os.File, fileInf
 }
 
 func (op *Operations) performDecryption(input *os.File, output *os.File, key []byte, fileHeader header.Header) error {
-	processor, err := worker.NewFileProcessor(key, false)
+	processor, err := worker.NewWorkerStream(key, false)
 	if err != nil {
 		return fmt.Errorf("decryption processor creation failed: %w", err)
 	}
 
-	if err := processor.SetAesNonce(fileHeader.AesNonce.Value); err != nil {
+	if err := processor.SetAESNonce(fileHeader.AesNonce.Value); err != nil {
 		return fmt.Errorf("AES nonce setting failed: %w", err)
 	}
 

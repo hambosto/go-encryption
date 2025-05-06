@@ -6,83 +6,71 @@ import (
 	"sync"
 )
 
-func (f *FileProcessor) executePipeline(r io.Reader, w io.Writer) error {
-	jobs := make(chan Job, f.workerCount)
-	results := make(chan Result, f.workerCount)
+func (ws *WorkerStream) runPipeline(reader io.Reader, writer io.Writer) error {
+	jobs := make(chan job, ws.workerCount)
+	results := make(chan result, ws.workerCount)
 	errChan := make(chan error, 1)
-	done := make(chan struct{}, f.workerCount)
 
-	// Start the worker goroutines
-	for range f.workerCount {
-		go f.processJobs(jobs, results, done)
+	// Start workers
+	var workersWg sync.WaitGroup
+	workersWg.Add(ws.workerCount)
+	for range ws.workerCount {
+		go func() {
+			defer workersWg.Done()
+			ws.processJobs(jobs, results)
+		}()
 	}
 
-	// Start the result collector
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go f.collectResults(w, results, &wg, errChan)
+	// Start result writer goroutine
+	var writerWg sync.WaitGroup
+	writerWg.Add(1)
+	go ws.writeResults(writer, results, &writerWg, errChan)
 
-	// Distribute the jobs
-	if err := f.distributeJobs(r, jobs, errChan); err != nil {
-		return fmt.Errorf("job distribution failed: %w", err)
+	// Read input and send jobs
+	var readErr error
+	if ws.processor.IsEncryption {
+		readErr = ws.readEncryptChunks(reader, jobs)
+	} else {
+		readErr = ws.readDecryptChunks(reader, jobs)
 	}
 
-	// Close the jobs channel to signal workers to exit
+	// Close jobs channel to signal workers to exit
 	close(jobs)
 
-	// Wait for all workers to finish
-	for range f.workerCount {
-		<-done
-	}
+	// Wait for all workers to complete
+	workersWg.Wait()
 
-	// Close the results channel
+	// Close results channel to signal writer to exit
 	close(results)
 
-	// Wait for result collector to finish
-	wg.Wait()
+	// Wait for writer to complete
+	writerWg.Wait()
 
-	// Check for any errors
+	// Check for errors from the write goroutine
 	select {
 	case err := <-errChan:
+		if readErr != nil {
+			// If we have both read and write errors, combine them
+			return fmt.Errorf("multiple errors: %v and %v", readErr, err)
+		}
 		return err
 	default:
-		return nil
+		return readErr
 	}
 }
 
-func (f *FileProcessor) collectResults(w io.Writer, results <-chan Result, wg *sync.WaitGroup, errChan chan<- error) {
-	defer wg.Done()
-
-	pendingResults := make(map[uint32]Result)
-	var nextIndex uint32
-
-	for result := range results {
-		if result.Error != nil {
-			errChan <- fmt.Errorf("chunk %d processing failed: %w", result.Index, result.Error)
-			return
+func (ws *WorkerStream) processJobs(jobs <-chan job, results chan<- result) {
+	for j := range jobs {
+		output, err := ws.processor.ProcessChunk(j.data)
+		size := len(j.data)
+		if !ws.processor.IsEncryption {
+			size = len(output)
 		}
-
-		pendingResults[result.Index] = result
-		if err := f.writeOrderedResults(w, pendingResults, &nextIndex); err != nil {
-			errChan <- err
-			return
+		results <- result{
+			index: j.index,
+			data:  output,
+			size:  size,
+			err:   err,
 		}
 	}
-}
-
-func (f *FileProcessor) writeOrderedResults(w io.Writer, pendingResults map[uint32]Result, nextIndex *uint32) error {
-	for {
-		result, exists := pendingResults[*nextIndex]
-		if !exists {
-			break
-		}
-
-		if err := f.writeResult(w, result); err != nil {
-			return err
-		}
-
-		delete(pendingResults, *nextIndex)
-		*nextIndex++
-	}
-	return nil
 }
