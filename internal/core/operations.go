@@ -76,7 +76,7 @@ func (op *Operations) validatePath(path string, isInput bool) error {
 }
 
 func (op *Operations) deriveKey(password string) ([]byte, []byte, error) {
-	kdf, err := kdf.NewBuilder().WithMemory(128).WithIterations(6).WithParallelism(8).WithKeyLength(64).WithSaltLength(32).Build()
+	kdf, err := kdf.NewDeriver(nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create KDF: %v", err)
 	}
@@ -218,12 +218,12 @@ func (op *Operations) handleDecryption(config OperationConfig) error {
 		}
 	}
 
-	kdfBuilder, err := kdf.NewBuilder().WithMemory(128).WithIterations(6).WithParallelism(8).WithKeyLength(64).WithSaltLength(32).Build()
+	kdf, err := kdf.NewDeriver(nil)
 	if err != nil {
 		return fmt.Errorf("failed to create KDF: %v", err)
 	}
 
-	key, err := kdfBuilder.DeriveKey([]byte(password), fileHeader.Salt.Value)
+	key, err := kdf.DeriveKey([]byte(password), fileHeader.Salt.Value)
 	if err != nil {
 		return fmt.Errorf("key derivation failed: %w", err)
 	}

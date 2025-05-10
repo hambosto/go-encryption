@@ -5,23 +5,20 @@ import (
 	"fmt"
 )
 
-// Common errors
 var (
 	ErrEmptyPassword     = errors.New("password cannot be empty")
 	ErrInvalidSaltLength = errors.New("salt length doesn't match configuration")
 	ErrInvalidParameters = errors.New("invalid parameters")
 )
 
-// Parameters holds the configuration for the key derivation function
 type Parameters struct {
-	MemoryMB    uint32 // Memory usage in MB
-	Iterations  uint32 // Time cost
-	Parallelism uint8  // Number of threads
-	KeyBytes    uint32 // Output key length in bytes
-	SaltBytes   uint32 // Salt length in bytes
+	MemoryMB    uint32
+	Iterations  uint32
+	Parallelism uint8
+	KeyBytes    uint32
+	SaltBytes   uint32
 }
 
-// DefaultParameters returns the recommended secure parameters
 func DefaultParameters() Parameters {
 	return Parameters{
 		MemoryMB:    64, // 64MB
@@ -32,7 +29,6 @@ func DefaultParameters() Parameters {
 	}
 }
 
-// MinimumParameters returns the minimum acceptable parameters
 func MinimumParameters() Parameters {
 	return Parameters{
 		MemoryMB:    8,  // 8MB minimum
@@ -43,7 +39,6 @@ func MinimumParameters() Parameters {
 	}
 }
 
-// Validate checks if parameters are acceptable
 func (p Parameters) Validate() error {
 	min := MinimumParameters()
 
