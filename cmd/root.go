@@ -2,41 +2,49 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/hambosto/go-encryption/internal/core"
 	"github.com/hambosto/go-encryption/internal/ui"
 )
 
-func Execute() error {
+func Execute() {
 	terminal := ui.NewTerminal()
 	if err := terminal.Clear(); err != nil {
-		return fmt.Errorf("failed to clear terminal: %w", err)
+		fmt.Printf("Error: failed to clear terminal: %v\n", err)
+		os.Exit(1)
 	}
 
 	prompt := ui.NewPrompt()
 	fileManager := core.NewFileManager(3)
 	processor := core.NewProcessor(fileManager, prompt)
 
-	opType, err := prompt.GetOperation()
+	operation, err := prompt.GetOperation()
 	if err != nil {
-		return fmt.Errorf("failed to get operation: %w", err)
+		fmt.Printf("Error: failed to get operation: %v\n", err)
+		os.Exit(1)
 	}
 
 	fileFinder := ui.NewFileFinder()
-	files, err := fileFinder.FindEligibleFiles(opType)
+	files, err := fileFinder.FindEligibleFiles(operation)
 	if err != nil {
-		return fmt.Errorf("failed to list files: %w", err)
+		fmt.Printf("Error: failed to list files: %v\n", err)
+		os.Exit(1)
 	}
 
 	if len(files) == 0 {
 		fmt.Println("No eligible files found.")
-		return nil
+		os.Exit(1)
 	}
 
 	selectedFile, err := prompt.SelectFile(files)
 	if err != nil {
-		return fmt.Errorf("failed to select file: %w", err)
+		fmt.Printf("Error: failed to select file: %v\n", err)
+		os.Exit(1)
 	}
 
-	return processor.ProcessFile(selectedFile, opType)
+	if err := processor.ProcessFile(selectedFile, operation); err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
 }
